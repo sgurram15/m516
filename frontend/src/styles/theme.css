@@ -1,0 +1,306 @@
+/* Shared palette — one source of truth for "what does critical/compliant look like", matching
+   .streamlit/config.toml (background/primary/text) and m516/report/render.py (severity/status colors)
+   so the PDF and this UI never disagree (docs/06_FRONTEND_ARCHITECTURE.md). */
+:root {
+  --color-bg: #0b1220;
+  --color-bg-card: #141b2e;
+  --color-bg-card-alt: #1a2338;
+  --color-border: #263049;
+  --color-primary: #22d3ee;
+  --color-text: #e5e7eb;
+  --color-text-muted: #94a3b8;
+
+  --color-critical: #c0392b;
+  --color-high: #e67e22;
+  --color-medium: #f1c40f;
+  --color-low: #27ae60;
+  --color-neutral: #95a5a6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--color-bg-card);
+  border-right: 1px solid var(--color-border);
+  padding: 1.5rem 1rem;
+}
+
+.sidebar h1 {
+  color: var(--color-primary);
+  font-size: 1.25rem;
+  margin: 0 0 0.25rem;
+}
+
+.sidebar p {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  margin: 0 0 1.5rem;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar button.nav-item {
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-text);
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.sidebar button.nav-item:hover {
+  background: var(--color-bg-card-alt);
+}
+
+.sidebar button.nav-item.active {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.page-header h2 {
+  margin: 0 0 0.25rem;
+  color: var(--color-primary);
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-tile {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.stat-tile .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.stat-tile .label {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+
+.badge-critical,
+.badge-non-compliant,
+.badge-red {
+  background: var(--color-critical);
+}
+
+.badge-high {
+  background: var(--color-high);
+}
+
+.badge-medium,
+.badge-partial,
+.badge-yellow {
+  background: var(--color-medium);
+  color: var(--color-bg);
+}
+
+.badge-low,
+.badge-compliant,
+.badge-green {
+  background: var(--color-low);
+}
+
+.badge-unmapped,
+.badge-neutral {
+  background: var(--color-neutral);
+  color: var(--color-bg);
+}
+
+.btn {
+  background: var(--color-primary);
+  color: var(--color-bg);
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+input[type="text"],
+select {
+  background: var(--color-bg-card-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.progress-banner {
+  background: var(--color-bg-card-alt);
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-banner {
+  background: #2a1414;
+  border: 1px solid var(--color-critical);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.center-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-form {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 420px;
+}
+
+.scan-form h1 {
+  color: var(--color-primary);
+  margin-top: 0;
+}
+
+.scan-form label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.scan-form .field {
+  margin-bottom: 1rem;
+}
+
+.scan-form input,
+.scan-form select {
+  width: 100%;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.disclaimer {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}

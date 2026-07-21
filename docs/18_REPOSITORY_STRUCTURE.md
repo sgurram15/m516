@@ -20,6 +20,7 @@ M516/
 │   ├── 02_ARCHITECTURE.md
 │   ├── 03_DOMAIN_MODEL.md
 │   ├── 05_API_DESIGN.md       # FastAPI endpoint contracts (authored in WP5's backend half)
+│   ├── 06_FRONTEND_ARCHITECTURE.md  # frontend/ tooling, structure, palette (WP5's frontend half)
 │   ├── 07_BACKEND_ARCHITECTURE.md
 │   ├── 12_DECISION_LOG.md     # ADRs
 │   ├── 15_PROGRESS.md         # Current state — read second, every session
@@ -81,6 +82,16 @@ M516/
 │       ├── routes.py           # POST /api/scans, GET .../{dashboard,assets,findings,compliance,report.pdf}, /api/packs, /api/health
 │       └── app.py              # create_app() factory — `uvicorn m516.api.app:create_app --factory`
 │
+├── frontend/                   # WP5 frontend half — the real demo UI (docs/06_FRONTEND_ARCHITECTURE.md)
+│   ├── package.json, tsconfig.json, vite.config.ts, index.html, .env.example
+│   └── src/
+│       ├── main.tsx, App.tsx  # App.tsx: no scan yet -> ScanInitiation; else -> Shell (Sidebar + tab)
+│       ├── api/{types.ts,client.ts}  # types mirror m516/api/schemas.py; client = typed fetch wrapper
+│       ├── hooks/useScan.ts    # createScan() + polls GET /api/scans/{id} for FR-5.1 live progress
+│       ├── components/         # Sidebar, StatTile, SeverityBadge, StatusBadge, ProgressBanner, Waiting
+│       ├── pages/              # ScanInitiation, Dashboard, AssetDiscovery, RiskScoring, Compliance
+│       └── styles/theme.css    # shared palette — see docs/06_FRONTEND_ARCHITECTURE.md
+│
 ├── demo/                       # Dev visualization tool — NOT the WP5 React UI
 │   ├── streamlit_app.py       # `streamlit run demo/streamlit_app.py` — dark theme, sidebar-navigated
 │   │                           # Dashboard/Asset Discovery/Port Findings/Risk Scoring views;
@@ -121,9 +132,12 @@ M516/
 - `packs/nigeria-banking/` is now authored from genuine NDPR/CBN source documents — see
   `packs/README.md` and `docs/15_PROGRESS.md` for provenance and the still-open compliance-professional
   validation step required before any client relies on the output.
-- `m516/report/` (WP4) and `m516/pipeline.py` + `m516/api/` (WP5 backend half) are now built —
-  `run_scan()` is the one function wiring discovery → findings → compliance mapping → report
-  end-to-end. `frontend/` (WP5's React half) is still not started — `demo/` is a separate, permanent
-  dev convenience, not a precursor to it.
+- `m516/report/` (WP4), `m516/pipeline.py` + `m516/api/` (WP5 backend half), and `frontend/` (WP5
+  frontend half) are all now built — `run_scan()` wires discovery → findings → compliance mapping →
+  report end-to-end, and `frontend/` is the real client-facing demo UI. `demo/` is a separate,
+  permanent dev convenience, not a precursor to `frontend/`. **Not yet done:** a human has not clicked
+  through `frontend/` in a real browser (this environment has no browser automation — see
+  `docs/06_FRONTEND_ARCHITECTURE.md`'s verification note and `docs/15_PROGRESS.md`'s WP5 frontend
+  entry for exactly what was and wasn't verified).
 - `test_ingest.py`/`test_retrieve.py` are the only tests in this repo that need network access (first
   run downloads ChromaDB's `all-MiniLM-L6-v2` ONNX model, ~80MB, one-time, then fully offline).

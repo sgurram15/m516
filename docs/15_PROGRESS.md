@@ -5,8 +5,10 @@
 
 ## Current position
 
-**Phase:** WP5 split into two halves (user's call): **backend half done this session** — pipeline
-orchestrator + FastAPI API, offline-verified. React frontend is the remaining half, not started.
+**Phase:** WP5 both halves built — backend (pipeline + FastAPI) and now the React frontend (all 5 FR-5
+screens). **Not yet done:** a human clicking through the UI in a real browser (this environment has no
+browser automation — see the WP5 frontend entry below) and one live end-to-end scan against a real
+domain.
 **Next action:** See top entry of `16_SESSION_LOG.md`.
 
 ## Work package status
@@ -18,7 +20,7 @@ orchestrator + FastAPI API, offline-verified. React frontend is the remaining ha
 | WP2 | CVE enrichment + risk scoring | ✅ Done |
 | WP3 | Compliance pack loader + mapping (differentiator) | 🟡 Engineering complete — gated on (a) client's LLM provider choice (asked 2026-07-21, user said not yet decided) and (b) compliance-professional validation of pack content. Neither is code work. |
 | WP4 | Report generation (PDF) | ✅ Done — content model + PDF render, live-verified against the real pack |
-| WP5 | API + demo UI | 🟡 Backend half done (pipeline + FastAPI API, `docs/05_API_DESIGN.md`); React frontend not started |
+| WP5 | API + demo UI | 🟡 Backend (`docs/05_API_DESIGN.md`) and React frontend (`docs/06_FRONTEND_ARCHITECTURE.md`) both built; needs human browser verification + a live end-to-end run |
 
 Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
@@ -214,6 +216,40 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   - `httpx` added to `requirements.txt` (was already a transitive FastAPI/TestClient dependency, now
     pinned explicitly since tests import it directly).
   - `pytest` passes (98/98, +11 new: `test_pipeline.py`, `test_api_scans.py`).
+- **WP5 (frontend half) · React demo UI, all 5 FR-5 screens.** User chose to build all 5 screens in one
+  session and to verify offline/fixture-based again (same axis as the backend half).
+  - `frontend/` (new) — Vite + React + TypeScript, no router, no state-management library (see
+    `docs/06_FRONTEND_ARCHITECTURE.md` for the full reasoning). `src/api/types.ts` mirrors
+    `m516/api/schemas.py` field-for-field; `src/api/client.ts` is a thin typed `fetch` wrapper over
+    every `docs/05_API_DESIGN.md` endpoint. `src/hooks/useScan.ts` creates a scan and polls
+    `GET /api/scans/{id}` every 1.5s for FR-5.1's live progress — no websocket/push channel.
+  - **Shared palette, not a new one:** `src/styles/theme.css` reuses `.streamlit/config.toml`'s
+    background/primary/text colors and `m516/report/render.py`'s severity/status hex colors, so the
+    Streamlit dev tool, the exported PDF, and this UI all agree on what "critical" looks like.
+  - Five pages exactly matching FR-5.1-5.5 (`ScanInitiation`, `Dashboard`, `AssetDiscovery`,
+    `RiskScoring`, `Compliance`) — no extra "Port Scanner" tab (not one of FR-5's five). Carried over
+    the naming precedent `demo/streamlit_app.py` already set: "Exploitation Scenario" →
+    **"Why it matters"** on Risk Scoring. `Compliance`'s `StatusBadge` renders `"unmapped"` as
+    **"Not yet classified"**, never a false "compliant" (BR-5) — `docs/05_API_DESIGN.md` already
+    documents that every mapping reads `unmapped` until WP3's LLM step is wired.
+  - **Gap found while building, not planned for:** the plan called for an "expandable per-asset
+    services" row on Asset Discovery, extrapolating from the mockup. Building it revealed the API only
+    exposes `service_count` (an int) per asset — full port/service detail only exists per-finding
+    (CVE-eligible services), already shown on Risk Scoring. Rather than widening the API contract
+    mid-build, `AssetDiscovery` stays a plain table of what `AssetSummaryOut` actually has — see
+    `06_FRONTEND_ARCHITECTURE.md`'s "A gap found while building" section.
+  - Authored `docs/06_FRONTEND_ARCHITECTURE.md` (new) — same gap `05_API_DESIGN.md` had before the
+    backend half: referenced everywhere, never written.
+  - **Verification, and its explicit limit:** this environment has no browser automation tool, so the
+    rendered UI was never visually inspected — stated plainly rather than claimed. What *was* verified:
+    `npm run build` (TypeScript compiles, Vite production build succeeds), `npm run dev` boots with no
+    errors, every page/hook/component module requested directly from Vite's dev server returns 200 (no
+    compile errors surfaced), and — running the real FastAPI app with discovery/NVD monkeypatched to
+    fixture data (same pattern as `tests/test_api_scans.py`) — a full `POST /api/scans` → poll →
+    `/dashboard`/`/assets`/`/findings`/`/compliance`/`/report.pdf` lifecycle over real HTTP, plus a CORS
+    check simulating the Vite dev server's origin and a 404 check for an unknown scan id. Every
+    response shape matched `src/api/types.ts` exactly. **A human still needs to open the app in a
+    browser and click through it** — this is the single next action.
 
 ## In progress
 
@@ -224,11 +260,11 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   gate clears.
 - WP4: report generation is functionally complete against current data (compliance sections will read
   "unmapped"/candidate-only until WP3's LLM step is wired — this is intentional, not a WP4 gap).
-- WP5: backend (pipeline + FastAPI API) done and offline-verified this session. **Still needed:** the
-  React frontend (5 screens per FR-5, `docs/06_FRONTEND_ARCHITECTURE.md` doesn't exist yet either — a
-  second doc gap, same as `05_API_DESIGN.md` was before this session) and one live end-to-end run
-  against a real domain (`mutualtrustmfb.com` recommended) — deferred by the user's own choice, not
-  forgotten.
+- WP5: backend and frontend both built and offline-verified. **Still needed:** a human opening the app
+  in a real browser and clicking through all 5 screens (this environment has no browser automation —
+  see the WP5 frontend entry above for exactly what was and wasn't verified), and one live end-to-end
+  run against a real domain (`mutualtrustmfb.com` recommended) — both deferred by the user's own
+  choice/this environment's limits, not forgotten.
 
 ## Blocked / gating decisions (resolve with client)
 
@@ -247,12 +283,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
 | Metric | Value |
 |---|---|
-| WPs complete | 4 of 6 (WP3 engineering-complete but gated externally; WP4 done; WP5 backend half done) |
-| Modules built | 5 of 5 (discovery, enrichment, compliance, report, API/pipeline) — LLM classification step and the React frontend remain |
+| WPs complete | 5 of 6 (WP3 engineering-complete but gated externally; WP4 done; WP5 built — needs human browser verification) |
+| Modules built | 5 of 5 backend (discovery, enrichment, compliance, report, API/pipeline) + the React frontend — LLM classification step is the only engine module remaining |
 | Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
 | Frameworks ingested | 2 of 2 (real: NDPR + CBN) — plus 1 fictional test-stub framework for genericity proof |
 | Packs authored | 1 of 1 (`nigeria-banking`) — plus 1 test-stub pack for genericity proof |
-| Tests passing | 98 |
+| Tests passing | 98 (Python `pytest`; the frontend has no test suite yet — verified via build + manual HTTP lifecycle check instead, see WP5 frontend entry above) |
 
 ## Notes
 

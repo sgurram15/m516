@@ -25,6 +25,11 @@ env/
 # Generated scan reports (m516/api/ — m516/config.py's report_output_dir default)
 .reports/
 
+# Frontend (frontend/ — WP5's React half, docs/06_FRONTEND_ARCHITECTURE.md)
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
 # IDE / OS
 .vscode/
 .idea/

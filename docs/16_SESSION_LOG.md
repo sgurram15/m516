@@ -6,6 +6,69 @@
 
 ---
 
+## Session 010 — 2026-07-21 — WP5 (frontend half): React demo UI, all 5 FR-5 screens
+
+- **Objective:** User said "start the frontend". Used plan mode again (different task from Session
+  009's backend plan, so the plan file was overwritten, not amended). Asked two questions before
+  coding: (1) build all 5 screens now vs. a smaller slice first — user chose **all 5 now**; (2) since
+  this environment has no browser automation tool, how to verify the data path — user chose
+  **offline/fixtures again** (same axis as Session 009).
+- **Files changed:** New `frontend/` (Vite + React + TypeScript): `package.json`, `tsconfig.json`,
+  `vite.config.ts`, `index.html`, `.env.example`; `src/api/{types.ts,client.ts}`;
+  `src/hooks/useScan.ts`; `src/components/{Sidebar,StatTile,SeverityBadge,StatusBadge,
+  ProgressBanner,Waiting}.tsx`; `src/pages/{ScanInitiation,Dashboard,AssetDiscovery,RiskScoring,
+  Compliance}.tsx`; `src/styles/theme.css`; `src/{App,main}.tsx`. New `docs/06_FRONTEND_
+  ARCHITECTURE.md`. `.gitignore` (+`frontend/node_modules/`, `frontend/dist/`).
+- **Design/architecture changes:** Vite+React+TypeScript, no router, no state-management library —
+  five screens switched by local React state (mirrors `demo/streamlit_app.py`'s sidebar pattern);
+  scan id lives only in React state, same in-memory-only simplification as the backend's `ScanState`.
+  Palette is **not new** — reused `.streamlit/config.toml`'s colors and `m516/report/render.py`'s
+  severity/status hex values, so the Streamlit tool, the PDF, and this UI all agree visually. Exactly
+  FR-5's five screens, not the mockup's sidebar: no Breach Monitor/Users & Roles (already-confirmed
+  out of scope), no separate Port Scanner tab (not one of the five). Naming carried over from
+  `demo/streamlit_app.py`'s precedent: "Exploitation Scenario" → "Why it matters"; `unmapped`
+  compliance status renders as "Not yet classified", never a false "compliant" (BR-5).
+  - **Real gap found while building, not planned for:** the plan called for expandable per-asset
+    service rows on Asset Discovery. Building it revealed the API only exposes `service_count` (an
+    int) per asset, not a full per-asset service list — that detail only exists per-finding. Trimmed
+    scope rather than widening the API mid-build; documented in `06_FRONTEND_ARCHITECTURE.md`.
+- **New decisions:** None architectural (no new ADR — applies ADR-002/007/009/010's existing spirit to
+  a new layer). Confirmed with the user: build-all-5-screens scope, offline-verification choice, both
+  recorded above.
+- **Verification — read this before assuming the UI works:** **this environment has no browser
+  automation tool.** What was actually done: `npm install` + `npm run build` (TypeScript compiles
+  cleanly, Vite production build succeeds); `npm run dev` boots with no errors; every page/hook/
+  component module requested directly from Vite's dev server returned 200 (no compile errors); and,
+  running the real FastAPI app with `m516.pipeline.run_discovery`/`m516.findings.lookup_cves`
+  monkeypatched to fixture data (same pattern as `tests/test_api_scans.py`, pointed at the test-stub
+  pack), a full `POST /api/scans` → poll → `dashboard`/`assets`/`findings`/`compliance`/`report.pdf`
+  lifecycle was exercised over real HTTP (via PowerShell, not pytest) — every response shape matched
+  `src/api/types.ts` exactly, CORS allowed a simulated Vite origin, and an unknown scan id correctly
+  404'd. **The rendered UI itself was never visually inspected.** No JS/TS unit or component test
+  suite was written either — out of scope for this pass, not an oversight.
+- **Pending work:** A human needs to `npm run dev` (after `npm install`) in `frontend/`, run the
+  backend (`uvicorn m516.api.app:create_app --factory`, real `nigeria-banking` pack or the fixture
+  script this session used), and actually click through all 5 screens — this is the single most
+  important remaining task before calling the POC demo-ready. One live end-to-end run against a real
+  domain (`mutualtrustmfb.com` recommended) is also still open. WP3's two external gates (LLM
+  provider, compliance validation) are unchanged.
+- **Next session starting point (SINGLE NEXT ACTION):** Get human eyes on `frontend/` in a real
+  browser — fix whatever rendering issues turn up (this session's verification could only prove the
+  API contract and the build pipeline, not the visual result). Once that's solid, do one live
+  end-to-end run against `mutualtrustmfb.com` through the real UI, and revisit WP3's LLM provider
+  choice if the client has decided by then.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. All
+  five backend modules (discovery, enrichment, compliance, report, API/pipeline) plus the full React
+  frontend are built. `frontend/` (`npm run dev`) talks to `m516/api/app.py`'s FastAPI backend
+  (`uvicorn m516.api.app:create_app --factory`) via `docs/05_API_DESIGN.md`'s contract. Only a human
+  browser check, one live end-to-end run, and WP3's two external gates (LLM provider, compliance
+  validation) stand between here and a demo-ready POC.
+- **Open questions:** Does the rendered UI actually look/work right (nobody has looked yet)? LLM
+  provider (still undecided)? Who validates NDPR/CBN mappings? IP ownership? Demo domain formal
+  sign-off (`mutualtrustmfb.com` recommended)?
+
+---
+
 ## Session 009 — 2026-07-21 — WP5 (backend half): pipeline orchestrator + FastAPI API
 
 - **Objective:** User said "start wp5". WP5 (`22_BUILD_PLAN.md`) is FastAPI + a 5-screen React frontend
