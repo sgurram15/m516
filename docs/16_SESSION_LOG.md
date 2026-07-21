@@ -6,6 +6,46 @@
 
 ---
 
+## Session 004 — 2026-07-21 — WP2: CVE enrichment + risk scoring
+
+- **Objective:** Execute WP2 per `22_BUILD_PLAN.md` — services → CVEs (NVD by CPE) + CVSS +
+  deterministic contextual score → ranked `Finding[]`, rules-based and explainable, never an LLM
+  (ADR-007, BR-3).
+- **Files changed:** Added `m516/enrichment/{nvd,scoring}.py`, `m516/findings.py`
+  (`Finding`, `build_findings`), `tests/{test_nvd,test_scoring,test_findings}.py` +
+  `tests/fixtures/nvd_*.json`. Added `nvd_api_key` to `m516/config.py`, documented `NVD_API_KEY` in
+  `.env.example`. **Refactor:** moved `m516/providers/cache.py` → `m516/cache.py` (shared infra now
+  that NVD enrichment also needs it); updated 3 import sites + `test_providers.py`.
+- **Design/architecture changes:** NVD lookup routes to `cpeName` (exact), `virtualMatchString`
+  (broad — used when the CPE is wildcarded, as ours often are), or `keywordSearch` (no CPE, only a
+  version string) based on what's actually available, confirmed against live NVD responses. Scoring
+  formula lives in one pure function (`scoring.score_finding`) deliberately isolated from HTTP/orchestration
+  so it's easy to swap if the client has a different methodology in mind.
+- **New decisions:** None architectural (implements already-decided ADR-006/007, no new ADR). Two
+  documented assumptions since `01_REQUIREMENTS.md` FR-2.3 doesn't define "exposure"/"staleness"
+  precisely — see `15_PROGRESS.md` Notes: exposure = WAF/CDN presence only (not `is_locally_hosted`,
+  which needs a pack not loaded until WP3); staleness = CVE known >2 years while still exposed.
+- **Pending work:** WP3 (compliance pack loader + mapping) not started. Gating decisions in
+  `15_PROGRESS.md` unchanged and still open (demo domain, NDPR/CBN source docs, mapping validator,
+  IP-ownership position).
+- **Next session starting point (SINGLE NEXT ACTION):** Begin **WP3 · Compliance pack loader +
+  mapping** per `22_BUILD_PLAN.md` — `m516/compliance/{pack_loader,ingest,retrieve,mapper}.py`,
+  `packs/nigeria-banking/**`. This is the differentiator module and needs NDPR + CBN source documents
+  (still an open gating decision) before real mapping can be validated — flag this to the client before
+  going deep on WP3. Engine must stay generic (golden rule) — the pack interface is already specified
+  in `docs/03_DOMAIN_MODEL.md` §2.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. POC for
+  a paying client, target = small Nigerian banks, frameworks NDPR+CBN. Pipeline: discovery → CVE
+  enrichment → compliance mapping (pack-driven) → report. **Golden rule:** engine is universal, all
+  NG/CBN/banking knowledge lives in the `nigeria-banking` compliance pack. Strictly passive. Free-tier.
+  Modules 1 (discovery) and 2 (enrichment) are now built and live-verified. WP3 is the first module to
+  touch ChromaDB/RAG/LLM and the first pack-specific content.
+- **Open questions:** demo domain (unresolved, and `nitda.gov.ng`'s previously-documented finding may
+  no longer hold — see Session 003)? NDPR/CBN source docs (now blocking, needed to start WP3 for real)?
+  who validates mappings? IP ownership?
+
+---
+
 ## Session 003 — 2026-07-21 — WP1: Discovery engine + providers
 
 - **Objective:** Execute WP1 per `22_BUILD_PLAN.md` — domain → normalised `DiscoveryResult` via

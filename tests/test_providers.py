@@ -88,6 +88,7 @@ def test_registry_enables_only_providers_with_keys_present():
         database_url=None,
         netlas_api_key="key",
         criminalip_api_key=None,
+        nvd_api_key=None,
         cache_ttl_seconds=86400,
     )
 

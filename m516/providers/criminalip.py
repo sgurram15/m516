@@ -16,7 +16,7 @@ import requests
 from m516.logging import get_logger
 from m516.models import Asset, Service
 from m516.providers.base import BaseProvider
-from m516.providers.cache import cache_get, cache_set
+from m516.cache import cache_get, cache_set
 from m516.providers.dns_resolve import resolve
 
 _URL = "https://api.criminalip.io/v1/domain/reports"

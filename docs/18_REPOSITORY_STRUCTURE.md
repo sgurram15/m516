@@ -1,7 +1,7 @@
 # 18 · Repository Structure
 
 > **Status:** Living · Updated whenever files are added/moved (per `CLAUDE.md` end-of-session
-> checklist). Reflects the tree as of WP1 completion.
+> checklist). Reflects the tree as of WP2 completion.
 
 ```
 M516/
@@ -29,16 +29,20 @@ M516/
 │   ├── __main__.py            # CLI entry point: `python -m m516`
 │   ├── config.py              # Env-var config loader (ADR-002: missing key = skip, not fail)
 │   ├── logging.py             # Structured logging setup
+│   ├── cache.py               # Shared disk cache keyed by (namespace, identifier), TTL-based
 │   ├── models.py              # Service / Asset / DiscoveryResult (docs/03_DOMAIN_MODEL.md §1)
 │   ├── discovery.py           # Module 1 orchestrator: run providers, merge by IP, WAF detection
-│   └── providers/
-│       ├── base.py            # BaseProvider interface + detect_waf()
-│       ├── cache.py           # Disk cache keyed by (provider, identifier), TTL-based
-│       ├── dns_resolve.py     # Shared passive DNS helper (InternetDB, Criminal IP)
-│       ├── netlas.py          # Deep banners/CPEs/certs (ADR-004)
-│       ├── criminalip.py      # Summary/risk/tech-stack cross-check (ADR-004)
-│       ├── internetdb.py      # Free, no-key IP enrichment (ADR-011)
-│       └── registry.py        # Enable-by-env-var-key provider registration
+│   ├── findings.py            # Module 2 orchestrator + Finding: services -> ranked findings
+│   ├── providers/
+│   │   ├── base.py            # BaseProvider interface + detect_waf()
+│   │   ├── dns_resolve.py     # Shared passive DNS helper (InternetDB, Criminal IP)
+│   │   ├── netlas.py          # Deep banners/CPEs/certs (ADR-004)
+│   │   ├── criminalip.py      # Summary/risk/tech-stack cross-check (ADR-004)
+│   │   ├── internetdb.py      # Free, no-key IP enrichment (ADR-011)
+│   │   └── registry.py        # Enable-by-env-var-key provider registration
+│   └── enrichment/
+│       ├── nvd.py             # NVD/CVE lookup by CPE (ADR-006), CVEMatch
+│       └── scoring.py         # Deterministic contextual risk scoring (ADR-007, BR-3 — no LLM)
 │
 └── tests/
     ├── __init__.py
@@ -46,16 +50,20 @@ M516/
     ├── test_models.py         # Derived fields, merge-by-IP logic
     ├── test_providers.py      # Adapter from_records() against fixtures, registry, WAF detection
     ├── test_discovery.py      # Orchestration: merge, per-provider error isolation, WAF applied
+    ├── test_nvd.py            # NVD parsing + cpeName/virtualMatchString/keywordSearch routing
+    ├── test_scoring.py        # Scoring formula: port/exposure/staleness factors, severity buckets
+    ├── test_findings.py       # build_findings orchestration: ranking, BR-2 skip, error isolation
     └── fixtures/               # Captured/representative provider JSON for offline adapter tests
         ├── netlas_host.json
         ├── criminalip_domain_reports.json
-        └── internetdb_ip.json
+        ├── internetdb_ip.json
+        ├── nvd_log4j.json
+        └── nvd_empty.json
 ```
 
 ## Notes
 
 - `packs/` (compliance packs, e.g. `nigeria-banking/`) is introduced in WP3 — not present yet.
-- `m516/enrichment/`, `m516/findings.py`, `m516/compliance/`, `m516/report/`, `m516/pipeline.py`,
-  `m516/api/` are introduced module-by-module across WP2–WP5 per `docs/22_BUILD_PLAN.md`. Don't create
-  them ahead of the WP that needs them.
+- `m516/compliance/`, `m516/report/`, `m516/pipeline.py`, `m516/api/` are introduced module-by-module
+  across WP3–WP5 per `docs/22_BUILD_PLAN.md`. Don't create them ahead of the WP that needs them.
 - `frontend/` is introduced in WP5 only.
