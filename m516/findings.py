@@ -27,6 +27,8 @@ class Finding:
     severity: str
     explanation: str
     match_confidence: str
+    exploitability_score: float | None = None
+    impact_score: float | None = None
     compliance: list = field(default_factory=list)
     tenant_id: str | None = None
 
@@ -54,6 +56,10 @@ def build_findings(discovery_result: DiscoveryResult) -> tuple[list[Finding], li
                 continue
 
             contextual_score, severity, explanation = score_finding(service, asset, matches)
+            # Recomputed rather than threaded through score_finding()'s return — same primary-match
+            # selection scoring.py already does internally; avoids widening its return contract for
+            # display-only fields (matches the existing `cvss=max(...)` pattern below).
+            primary = max(matches, key=lambda m: m.cvss_score or 0)
             findings.append(
                 Finding(
                     asset=asset,
@@ -63,7 +69,9 @@ def build_findings(discovery_result: DiscoveryResult) -> tuple[list[Finding], li
                     contextual_score=contextual_score,
                     severity=severity,
                     explanation=explanation,
-                    match_confidence=matches[0].match_confidence,
+                    match_confidence=primary.match_confidence,
+                    exploitability_score=primary.exploitability_score,
+                    impact_score=primary.impact_score,
                 )
             )
 

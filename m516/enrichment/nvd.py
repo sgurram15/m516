@@ -41,6 +41,8 @@ class CVEMatch:
     published: datetime | None
     description: str | None
     match_confidence: str = "broad"  # "exact" (version-confirmed cpeName) | "broad" (everything else)
+    exploitability_score: float | None = None
+    impact_score: float | None = None
 
 
 def lookup_cves(service: Service, api_key: str | None = None, cache_ttl_seconds: int = 86400) -> list[CVEMatch]:
@@ -113,21 +115,35 @@ def _parse_datetime(value: object) -> datetime | None:
     return parsed
 
 
-def _extract_cvss(cve: dict) -> tuple[float | None, str | None]:
+def _extract_cvss(cve: dict) -> tuple[float | None, str | None, float | None, float | None]:
+    """Returns (base_score, base_severity, exploitability_score, impact_score). The latter two are
+    siblings of `cvssData` in NVD's response (not nested inside it), for both V3.x and V2 metrics."""
     metrics = cve.get("metrics", {}) or {}
 
     for key in ("cvssMetricV31", "cvssMetricV30"):
         entries = metrics.get(key) or []
         if entries:
-            data = entries[0].get("cvssData", {}) or {}
-            return data.get("baseScore"), data.get("baseSeverity")
+            entry = entries[0]
+            data = entry.get("cvssData", {}) or {}
+            return (
+                data.get("baseScore"),
+                data.get("baseSeverity"),
+                entry.get("exploitabilityScore"),
+                entry.get("impactScore"),
+            )
 
     entries = metrics.get("cvssMetricV2") or []
     if entries:
-        data = entries[0].get("cvssData", {}) or {}
-        return data.get("baseScore"), entries[0].get("baseSeverity")
+        entry = entries[0]
+        data = entry.get("cvssData", {}) or {}
+        return (
+            data.get("baseScore"),
+            entry.get("baseSeverity"),
+            entry.get("exploitabilityScore"),
+            entry.get("impactScore"),
+        )
 
-    return None, None
+    return None, None, None, None
 
 
 def _extract_description(cve: dict) -> str | None:
@@ -149,7 +165,7 @@ def from_records(data: dict, match_confidence: str = "broad") -> list[CVEMatch]:
         if not cve_id:
             continue
 
-        cvss_score, cvss_severity = _extract_cvss(cve)
+        cvss_score, cvss_severity, exploitability_score, impact_score = _extract_cvss(cve)
         matches.append(
             CVEMatch(
                 id=cve_id,
@@ -158,6 +174,8 @@ def from_records(data: dict, match_confidence: str = "broad") -> list[CVEMatch]:
                 published=_parse_datetime(cve.get("published")),
                 description=_extract_description(cve),
                 match_confidence=match_confidence,
+                exploitability_score=exploitability_score,
+                impact_score=impact_score,
             )
         )
 

@@ -81,6 +81,27 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
     responsible NVD match. That's a "not evaluated" data-availability result, not a "green/clean" one;
     the provenance tracking and the Caddy/Fathom catch were the actual value of that run.
   - `pytest` passes (60/60).
+- **6-domain MFB triage + `demo/streamlit_app.py` overhaul.** User supplied a list of 10 real CBN-
+  licensed Nigerian microfinance banks; verified domains via search + content fetch (one of the user's
+  guessed domains, `finatrustbank.com`, was wrong — real domain is `finatrustmfbank.com`, Cloudflare-
+  fronted, with a second live LOLC-branded site at `finatrustlolcmfbank.com` that isn't). Ran the passive
+  pipeline against 6 verified domains. Result: `finatrustlolcmfbank.com` and `mutualtrustmfb.com` (both
+  on generic US shared/cPanel hosting, no WAF) showed rich exposure — 15-22 open ports each including
+  FTP, raw mail ports, MariaDB, and cPanel admin panels — while the Cloudflare-fronted Fina Trust domain
+  and 3 others showed little to nothing. **Recommended demo target: `mutualtrustmfb.com`.** Streamlit app
+  extended to take multiple domains (one per line) with a colored red/yellow/green comparison table for
+  exactly this kind of triage, and rewritten so findings/services render as plain-language cards+summary
+  banners instead of raw dataframes (CVE IDs/CPE strings moved into "Technical details" expanders).
+- **CVSS sub-scores + port-risk labels, informed by 3 UI mockups (`ui screens/*.jpg`).** User provided
+  Asset Discovery / Port Scanner / Risk Scoring mockups. Two real gaps closed: `CVEMatch`/`Finding` now
+  carry `exploitability_score`/`impact_score` (NVD already returns these as siblings of `cvssData` — we
+  were calling the API and not parsing them); new `m516/enrichment/port_risk.py` gives a deterministic,
+  CVE-independent risk label per port type (SSH → "Weak Authentication", exposed DB ports → "Open
+  Database", etc.) — usable even for the "not evaluated" services that have no CVE data at all, which is
+  exactly the gap it closes. Both wired into the Streamlit demo. `pytest` passes (64/64). **Two things
+  flagged, not acted on** (see Notes below): the mockups include a "Breach Monitor" and "Users & Roles"
+  sidebar item, both explicitly out of scope per `01_REQUIREMENTS.md`; and the "Port Scanner" name/"Scan
+  Date" label reads as active scanning when the engine is strictly passive (ADR-001).
 
 ## In progress
 
@@ -88,7 +109,8 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
 ## Blocked / gating decisions (resolve with client)
 
-- [ ] Confirm demo domain (small Nigerian bank or safe proxy).
+- [ ] Confirm demo domain (small Nigerian bank or safe proxy) — **`mutualtrustmfb.com` recommended**
+  based on the 6-domain triage (richest real exposure, single unambiguous domain). See Completed above.
 - [ ] Obtain/confirm NDPR + CBN source documents (needed for WP3).
 - [x] Confirm first providers to wire live — done: Netlas + Criminal IP + InternetDB, all live-verified.
 - [ ] Agree who validates compliance mappings.
@@ -103,7 +125,7 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 | Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
 | Frameworks ingested | 0 of 2 |
 | Packs authored | 0 of 1 (`nigeria-banking`) |
-| Tests passing | 60 |
+| Tests passing | 64 |
 
 ## Notes
 
@@ -128,3 +150,16 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   and no pack is loaded until WP3. If the client has a specific scoring methodology in mind, revisit
   `m516/enrichment/scoring.py` — the formula is isolated in one pure function specifically so it's easy
   to swap without touching NVD lookup or orchestration code.
+- **UI mockups vs `01_REQUIREMENTS.md` — two unresolved conflicts, flagged not fixed.** The 3 mockups
+  in `ui screens/` (informing `06_FRONTEND_ARCHITECTURE.md`, not yet authored) include:
+  1. A **"Breach Monitor"** sidebar item — but "Breach / dark-web monitoring" is explicitly out of scope
+     for the POC (needs a separate data pipeline, raises PII concerns).
+  2. A **"Users & Roles"** sidebar item — but multi-tenancy/auth/roles is explicitly deferred ("weeks of
+     secure-auth work with zero demo value"), consistent with ADR-010 (tenant-aware model, no auth built).
+  3. The mockup screen is named **"Port Scanner"** with a "Scan Date" filter — reads as active scanning.
+     The engine is strictly passive (ADR-001) and has no scan/rescan feature at all; if this mockup
+     becomes the real WP5 frontend spec, the labeling should say "Port Findings" or similar, not
+     "Scanner", to avoid implying active probing to a client.
+  Resolve before WP5 frontend work formalizes around these mockups — either descope the two sidebar
+  items from the design, or consciously expand `01_REQUIREMENTS.md` to include them (bigger decision:
+  auth/roles was deferred specifically to avoid weeks of work with no POC value).

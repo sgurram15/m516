@@ -25,6 +25,7 @@ import streamlit as st
 from m516.config import load_config
 from m516.enrichment.detection_level import cert_detection_level, finding_detection_level
 from m516.enrichment.nvd import lookup_cves
+from m516.enrichment.port_risk import port_risk_label
 from m516.enrichment.scoring import score_finding
 from m516.findings import Finding
 from m516.models import Asset, DiscoveryResult
@@ -134,6 +135,11 @@ def _render_finding_card(f: Finding) -> None:
             st.write(f"**CPE:** `{f.service.cpe or '—'}`")
             st.write(f"**CVE IDs:** {', '.join(f.cve_ids)}")
             st.write(f"**Contextual score:** {f.contextual_score}/100 · **Confidence:** {f.match_confidence}")
+            st.write(
+                f"**Exploitability:** {f.exploitability_score if f.exploitability_score is not None else '—'} "
+                f"· **Impact:** {f.impact_score if f.impact_score is not None else '—'} "
+                "(CVSS sub-scores from NVD, for the most severe matched CVE)"
+            )
             st.write(f"**Full explanation:** {f.explanation}")
 
 
@@ -246,6 +252,7 @@ if run:
                     continue
 
                 contextual_score, severity, explanation = score_finding(service, asset, matches)
+                primary = max(matches, key=lambda m: m.cvss_score or 0)
                 findings.append(
                     Finding(
                         asset=asset,
@@ -255,7 +262,9 @@ if run:
                         contextual_score=contextual_score,
                         severity=severity,
                         explanation=explanation,
-                        match_confidence=matches[0].match_confidence,
+                        match_confidence=primary.match_confidence,
+                        exploitability_score=primary.exploitability_score,
+                        impact_score=primary.impact_score,
                     )
                 )
                 st.write(f"{label}: {len(matches)} CVE(s) — scored {contextual_score} ({severity})")
@@ -324,40 +333,56 @@ if run:
             st.caption(f"Captured by: {', '.join(sorted(asset.sources)) or 'unknown'}")
 
             checked = sum(1 for s in asset.services if s.is_cve_eligible)
+            risky_unchecked = sum(
+                1 for s in asset.services if not s.is_cve_eligible and port_risk_label(s.port, s.protocol)
+            )
             st.write(
                 f"{len(asset.services)} network door(s) found open on this server; {checked} had enough "
                 "detail to check for known issues (see findings below)."
+                + (
+                    f" **{risky_unchecked}** more couldn't be CVE-checked but are still worth a look based "
+                    "on what type of service they are."
+                    if risky_unchecked
+                    else ""
+                )
             )
 
-            simple_rows = [
-                {
-                    "Service": _friendly_service_name(s.port, s.protocol),
-                    "Software": s.product or "Unidentified",
-                    "Checked for issues?": "Yes — see findings below" if s.is_cve_eligible else "Not enough data",
-                    "Captured by": ", ".join(sorted(s.sources)) or "unknown",
-                }
-                for s in asset.services
-            ]
+            simple_rows = []
+            for s in asset.services:
+                risk = port_risk_label(s.port, s.protocol)
+                if s.is_cve_eligible:
+                    status = "Yes — see findings below"
+                elif risk:
+                    status = f"Not CVE-checked — but {risk[0]}"
+                else:
+                    status = "Not enough data"
+                simple_rows.append(
+                    {
+                        "Service": _friendly_service_name(s.port, s.protocol),
+                        "Software": s.product or "Unidentified",
+                        "Checked for issues?": status,
+                        "Captured by": ", ".join(sorted(s.sources)) or "unknown",
+                    }
+                )
             if simple_rows:
                 st.dataframe(pd.DataFrame(simple_rows), use_container_width=True, hide_index=True)
 
-                with st.expander("Technical detail (raw ports, protocols, CPE)"):
-                    st.dataframe(
-                        pd.DataFrame(
-                            [
-                                {
-                                    "Port": s.port,
-                                    "Protocol": s.protocol,
-                                    "Product": s.product or "—",
-                                    "CPE": s.cpe or "—",
-                                    "CVE-eligible": s.is_cve_eligible,
-                                }
-                                for s in asset.services
-                            ]
-                        ),
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                with st.expander("Technical detail (raw ports, protocols, CPE, risk category)"):
+                    tech_rows = []
+                    for s in asset.services:
+                        risk = port_risk_label(s.port, s.protocol)
+                        tech_rows.append(
+                            {
+                                "Port": s.port,
+                                "Protocol": s.protocol,
+                                "Product": s.product or "—",
+                                "CPE": s.cpe or "—",
+                                "CVE-eligible": s.is_cve_eligible,
+                                "Risk category": risk[0] if risk else "—",
+                                "Why it matters": risk[1] if risk else "—",
+                            }
+                        )
+                    st.dataframe(pd.DataFrame(tech_rows), use_container_width=True, hide_index=True)
 
         # --- Findings, plain-language cards ---
         st.subheader(f"Findings, ranked by risk ({len(findings)})")

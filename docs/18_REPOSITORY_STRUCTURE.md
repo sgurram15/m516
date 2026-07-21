@@ -1,7 +1,7 @@
 # 18 · Repository Structure
 
 > **Status:** Living · Updated whenever files are added/moved (per `CLAUDE.md` end-of-session
-> checklist). Reflects the tree as of the post-WP2 Censys/provenance/detection-level extension.
+> checklist). Reflects the tree as of the mockup-informed CVSS sub-scores + port-risk-labels addition.
 
 ```
 M516/
@@ -24,6 +24,11 @@ M516/
 │   ├── 21_COMPLIANCE_PACKS.md # Compliance pack format
 │   └── 22_BUILD_PLAN.md       # Work-package build order
 │
+├── ui screens/                 # UI mockups from the user — informs (not-yet-authored)
+│   ├── asset.jpg               # 06_FRONTEND_ARCHITECTURE.md. Two items conflict with
+│   ├── portscanner.jpg         # 01_REQUIREMENTS.md's explicit out-of-scope list
+│   └── riskscoring.jpg         # (Breach Monitor, Users & Roles) — see 15_PROGRESS.md Notes.
+│
 ├── m516/                      # The engine (package name matches the project)
 │   ├── __init__.py            # __version__
 │   ├── __main__.py            # CLI entry point: `python -m m516`
@@ -42,13 +47,15 @@ M516/
 │   │   ├── internetdb.py      # Free, no-key IP enrichment (ADR-011)
 │   │   └── registry.py        # Enable-by-env-var-key provider registration
 │   └── enrichment/
-│       ├── nvd.py             # NVD/CVE lookup by CPE (ADR-006), CVEMatch (+ match_confidence)
+│       ├── nvd.py             # NVD/CVE lookup by CPE (ADR-006), CVEMatch (+ confidence, sub-scores)
 │       ├── scoring.py         # Deterministic contextual risk scoring (ADR-007, BR-3 — no LLM)
-│       └── detection_level.py # Red/yellow/green rules for findings + certificate status
+│       ├── detection_level.py # Red/yellow/green rules for findings + certificate status
+│       └── port_risk.py       # CVE-independent port-type risk labels (mockup-informed)
 │
-├── demo/                       # Throwaway dev visualization — NOT the WP5 React UI
-│   ├── streamlit_app.py       # `streamlit run demo/streamlit_app.py` — live scan, WP1+WP2 only
-│   └── requirements.txt       # streamlit (kept out of the engine's own requirements.txt)
+├── demo/                       # Dev visualization tool — NOT the WP5 React UI
+│   ├── streamlit_app.py       # `streamlit run demo/streamlit_app.py` — multi-domain triage,
+│   │                           # plain-language findings/services, red/yellow/green comparison
+│   └── requirements.txt       # streamlit + pandas (kept out of the engine's own requirements.txt)
 │
 └── tests/
     ├── __init__.py
@@ -56,10 +63,11 @@ M516/
     ├── test_models.py         # Derived fields, merge-by-IP logic, service-level provenance/backfill
     ├── test_providers.py      # Adapter from_records() against fixtures, registry, WAF detection
     ├── test_discovery.py      # Orchestration: merge, per-provider error isolation, WAF applied
-    ├── test_nvd.py            # NVD parsing + cpeName/virtualMatchString/keywordSearch routing
+    ├── test_nvd.py            # NVD parsing, query routing, CVSS sub-score extraction
     ├── test_scoring.py        # Scoring formula: port/exposure/staleness factors, severity buckets
     ├── test_findings.py       # build_findings orchestration: ranking, BR-2 skip, error isolation
     ├── test_detection_level.py # Red/yellow/green rule criteria for findings + certificates
+    ├── test_port_risk.py      # Port-type risk label catalog
     └── fixtures/               # Captured/representative provider JSON for offline adapter tests
         ├── netlas_host.json
         ├── criminalip_domain_reports.json

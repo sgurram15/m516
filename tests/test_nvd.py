@@ -23,6 +23,8 @@ def test_from_records_parses_cve_with_v31_metrics():
     assert match.published.year == 2021
     assert "JNDI" in match.description
     assert match.match_confidence == "exact"
+    assert match.exploitability_score == 3.9
+    assert match.impact_score == 6.0
 
 
 def test_from_records_defaults_to_broad_confidence():
@@ -49,7 +51,12 @@ def test_from_records_falls_back_to_cvss_v2_when_v3_absent():
                     "descriptions": [{"lang": "en", "value": "old vuln"}],
                     "metrics": {
                         "cvssMetricV2": [
-                            {"cvssData": {"baseScore": 7.5}, "baseSeverity": "HIGH"}
+                            {
+                                "cvssData": {"baseScore": 7.5},
+                                "baseSeverity": "HIGH",
+                                "exploitabilityScore": 8.6,
+                                "impactScore": 6.4,
+                            }
                         ]
                     },
                 }
@@ -61,6 +68,8 @@ def test_from_records_falls_back_to_cvss_v2_when_v3_absent():
 
     assert matches[0].cvss_score == 7.5
     assert matches[0].cvss_severity == "HIGH"
+    assert matches[0].exploitability_score == 8.6
+    assert matches[0].impact_score == 6.4
 
 
 def test_build_query_uses_cpe_name_for_versioned_cpe():

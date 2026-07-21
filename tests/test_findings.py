@@ -6,7 +6,7 @@ from m516.models import Asset, DiscoveryResult, Service
 _CPE = "cpe:2.3:a:x:x:1.0:*:*:*:*:*:*:*"
 
 
-def _match(cvss, cve_id="CVE-X", match_confidence="broad"):
+def _match(cvss, cve_id="CVE-X", match_confidence="broad", exploitability_score=None, impact_score=None):
     return CVEMatch(
         id=cve_id,
         cvss_score=cvss,
@@ -14,6 +14,8 @@ def _match(cvss, cve_id="CVE-X", match_confidence="broad"):
         published=None,
         description=None,
         match_confidence=match_confidence,
+        exploitability_score=exploitability_score,
+        impact_score=impact_score,
     )
 
 
@@ -43,6 +45,26 @@ def test_build_findings_creates_finding_for_eligible_service_with_matches(monkey
     assert findings[0].cvss == 9.0
     assert findings[0].match_confidence == "broad"
     assert errors == []
+
+
+def test_build_findings_propagates_exploitability_and_impact_from_the_primary_match(monkeypatch):
+    """Sub-scores must come from whichever match has the highest CVSS (the primary), not just the
+    first item in the list."""
+    monkeypatch.setattr(
+        findings_module,
+        "lookup_cves",
+        lambda service, api_key, ttl: [
+            _match(3.0, cve_id="CVE-LOW", exploitability_score=1.0, impact_score=1.0),
+            _match(9.0, cve_id="CVE-HIGH", exploitability_score=3.9, impact_score=6.0),
+        ],
+    )
+    asset = Asset(ip="1.2.3.4", services=[Service(port=443, protocol="tcp", cpe=_CPE)])
+    result = DiscoveryResult(domain="example.com", assets=[asset])
+
+    findings, _ = build_findings(result)
+
+    assert findings[0].exploitability_score == 3.9
+    assert findings[0].impact_score == 6.0
 
 
 def test_build_findings_propagates_exact_match_confidence(monkeypatch):

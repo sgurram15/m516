@@ -6,6 +6,49 @@
 
 ---
 
+## Session 006 — 2026-07-21 — MFB triage, Streamlit overhaul, mockup-informed engine additions
+
+- **Objective:** Three follow-on asks in one continuous session after Session 005: (1) triage a list of
+  10 real CBN-licensed Nigerian microfinance banks the user provided, to pick a demo domain; (2) do that
+  analysis via the Streamlit demo instead of ad hoc scripts, and make it non-technical-readable; (3)
+  incorporate 3 UI mockups the user placed in `ui screens/` to close real data gaps.
+- **Files changed:** `demo/streamlit_app.py` (multi-domain input + comparison table; full rewrite of
+  findings/services from raw dataframes to plain-language cards/summaries; port-risk-label column; CVSS
+  sub-score display); `demo/requirements.txt` (+pandas); `m516/enrichment/nvd.py` (`CVEMatch.
+  exploitability_score`/`impact_score`); `m516/enrichment/port_risk.py` (new); `m516/findings.py`
+  (`Finding.exploitability_score`/`impact_score`); tests extended in `test_nvd.py`/`test_findings.py`;
+  new `test_port_risk.py`.
+- **Design/architecture changes:** None architectural. Port-risk labels follow `detection_level.py`'s
+  established pattern (deterministic, no LLM, "no informed opinion → None, never fabricate"). CVSS
+  sub-scores are display-only — `scoring.py`'s formula untouched. `findings.py` and the Streamlit script
+  both locally recompute the primary (highest-CVSS) match to pull sub-scores, matching the existing
+  `cvss=max(...)` duplication pattern rather than widening `score_finding()`'s return contract.
+- **New decisions:** None architectural (no new ADR). Two **flagged-not-acted-on** conflicts between the
+  UI mockups and `01_REQUIREMENTS.md`, recorded in `15_PROGRESS.md` Notes for the user to resolve before
+  WP5 frontend work formalizes around these mockups: "Breach Monitor" and "Users & Roles" sidebar items
+  are both explicitly out of POC scope; the "Port Scanner" name/"Scan Date" label reads as active
+  scanning when the engine is strictly passive (ADR-001).
+- **Pending work:** WP3 (compliance pack loader + mapping) still not started — this whole session was
+  another detour, not a WP, same as Session 005. **Demo domain recommendation now exists**:
+  `mutualtrustmfb.com` (richest real exposure found across 6 verified bank domains — 22 open ports,
+  FTP/mail/database/cPanel admin panels directly exposed, no WAF) — still needs the user's actual sign-off
+  as the gating decision, but it's no longer a cold open question.
+- **Next session starting point (SINGLE NEXT ACTION):** Begin **WP3 · Compliance pack loader + mapping**
+  per `22_BUILD_PLAN.md` (same next action as Sessions 004/005 — still not started). Still needs
+  NDPR/CBN source documents (open gating decision) before real mapping can be validated.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. Modules
+  1 (discovery, 4 providers) and 2 (enrichment, now with CVSS sub-scores + confidence tracking) are
+  built and live-verified. `demo/streamlit_app.py` is a real, working multi-domain triage tool with
+  plain-language output and a red/yellow/green comparison view — useful for picking/demoing targets, not
+  the WP5 React UI. `m516/enrichment/port_risk.py` gives CVE-independent risk signal for services with
+  no version data. Golden rule and passive-only constraint unchanged throughout.
+- **Open questions:** NDPR/CBN source docs (still blocking real WP3 start)? Who validates mappings? IP
+  ownership? **New**: does the user want to formally confirm `mutualtrustmfb.com` as the demo domain, and
+  how should the Breach Monitor / Users & Roles / "Port Scanner" naming conflicts in the UI mockups be
+  resolved before they become the real WP5 frontend spec?
+
+---
+
 ## Session 005 — 2026-07-21 — Post-WP2: Censys + service provenance + detection levels
 
 - **Objective:** User-requested extension (not a new WP): wire up a newly-provided `CENSYS_API_KEY`,
