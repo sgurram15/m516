@@ -22,6 +22,7 @@ class Config:
     database_url: str | None
     netlas_api_key: str | None
     criminalip_api_key: str | None
+    cache_ttl_seconds: int
 
 
 def load_config() -> Config:
@@ -31,4 +32,5 @@ def load_config() -> Config:
         database_url=os.environ.get("DATABASE_URL") or None,
         netlas_api_key=os.environ.get("NETLAS_API_KEY") or None,
         criminalip_api_key=os.environ.get("CRIMINALIP_API_KEY") or None,
+        cache_ttl_seconds=int(os.environ.get("CACHE_TTL_SECONDS", 86400)),
     )

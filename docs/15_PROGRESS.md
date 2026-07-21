@@ -5,7 +5,7 @@
 
 ## Current position
 
-**Phase:** WP0 complete → ready to start **WP1 (discovery)**.
+**Phase:** WP1 complete → ready to start **WP2 (CVE enrichment + risk scoring)**.
 **Next action:** See top entry of `16_SESSION_LOG.md`.
 
 ## Work package status
@@ -13,7 +13,7 @@
 | WP | Description | Status |
 |---|---|---|
 | WP0 | Project scaffold | ✅ Done |
-| WP1 | Discovery engine + providers | ⬜ Not started |
+| WP1 | Discovery engine + providers | ✅ Done |
 | WP2 | CVE enrichment + risk scoring | ⬜ Not started |
 | WP3 | Compliance pack loader + mapping (differentiator) | ⬜ Not started |
 | WP4 | Report generation (PDF) | ⬜ Not started |
@@ -33,16 +33,22 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   with passing smoke tests, `.env.example`, `.gitignore`, `requirements.txt`. `pytest` passes (4/4);
   `python -m m516 --help` works. Git repo initialised. Docs moved into `docs/` to match documented
   paths; `docs/18_REPOSITORY_STRUCTURE.md` created.
+- **WP1 · Discovery engine + providers.** `m516/models.py` (`Service`/`Asset`/`DiscoveryResult` per
+  domain model), `m516/providers/{base,cache,dns_resolve,netlas,criminalip,internetdb,registry}.py`,
+  `m516/discovery.py` orchestrator (merge-by-IP, WAF detection, per-provider error isolation).
+  Netlas + Criminal IP wired live with real API keys; InternetDB needs none. `pytest` passes (24/24,
+  fixture-driven, no network). Verified end-to-end against a real live call (`nitda.gov.ng`, ADR-004's
+  domain) — see note below on what changed since ADR-004 was written.
 
 ## In progress
 
-- Nothing in active build yet. Awaiting start of WP1.
+- Nothing in active build yet. Awaiting start of WP2.
 
 ## Blocked / gating decisions (resolve with client)
 
 - [ ] Confirm demo domain (small Nigerian bank or safe proxy).
 - [ ] Obtain/confirm NDPR + CBN source documents (needed for WP3).
-- [ ] Confirm first providers to wire live (recommend Netlas + Criminal IP + InternetDB).
+- [x] Confirm first providers to wire live — done: Netlas + Criminal IP + InternetDB, all live-verified.
 - [ ] Agree who validates compliance mappings.
 - [ ] Confirm IP-ownership position (SOW §12).
 
@@ -50,14 +56,26 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
 | Metric | Value |
 |---|---|
-| WPs complete | 1 of 6 |
-| Modules built | 0 of 4 |
-| Providers live | 0 |
+| WPs complete | 2 of 6 |
+| Modules built | 1 of 4 |
+| Providers live | 3 (Netlas, Criminal IP, InternetDB) |
 | Frameworks ingested | 0 of 2 |
 | Packs authored | 0 of 1 (`nigeria-banking`) |
-| Tests passing | 4 |
+| Tests passing | 24 |
 
 ## Notes
 
 - The earlier throwaway Module 1 prototype (from a prior exploratory session) is NOT in this repo; WP1
-  rebuilds it cleanly against these docs. Don't assume prior code exists — build per `22_BUILD_PLAN.md`.
+  rebuilt it cleanly against these docs, not reused. Don't assume prior code exists — build per
+  `22_BUILD_PLAN.md`.
+- **ADR-004's `nitda.gov.ng` finding may be stale.** A live WP1 verification call (2026-07-21) against
+  `nitda.gov.ng` via Netlas returned nginx on port 80 only — no MailEnable, no certificate data (current
+  Netlas plan/dataset didn't return `asn`/`net`/`certificate` fields for a domain-type query on this
+  host, unlike what the original coverage test reported). Infra may have changed since ADR-004, or
+  richer IP-level data needs a different query shape/plan tier. **Don't assume `nitda.gov.ng` still
+  demonstrates the MailEnable/expired-cert finding — re-validate before using it in a client demo.**
+- **Adapter design note (found during live verification, not from provider docs):** actual Netlas
+  domain-type responses nest product/version under `software[].tag[]` (keyed to a port only via the
+  item's `uri`, not a direct field) and Criminal IP's `domain/reports` technologies carry no port,
+  version, or IP at all — `m516/providers/criminalip.py` resolves domain→IP itself (like InternetDB)
+  and assumes port 80/tcp for its HTTP-fingerprinted tech stack. See file docstrings for detail.

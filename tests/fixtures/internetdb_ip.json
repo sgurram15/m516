@@ -1,0 +1,8 @@
+{
+  "ip": "197.211.60.10",
+  "ports": [22, 25, 443],
+  "cpes": [],
+  "hostnames": ["mail.example-ng.gov.ng"],
+  "vulns": ["CVE-2020-12345"],
+  "tags": []
+}

@@ -1,0 +1,37 @@
+{
+  "type": "domain",
+  "domain": "example-ng.gov.ng",
+  "dns": {
+    "a": ["197.211.60.10"]
+  },
+  "ports": [
+    {"port": 80, "prot4": "tcp", "prot7": "http", "protocol": "http"},
+    {"port": 25, "prot4": "tcp", "prot7": "smtp", "protocol": "smtp", "banner": "220 mail.example-ng.gov.ng ESMTP MailEnable Service"}
+  ],
+  "software": [
+    {
+      "uri": "http://example-ng.gov.ng:80/",
+      "tag": [
+        {"name": "nginx", "fullname": "Nginx", "nginx": {"version": "1.18.0"}, "cpe": ["cpe:2.3:a:f5:nginx:1.18.0:*:*:*:*:*:*:*"]}
+      ]
+    },
+    {
+      "uri": "smtp://example-ng.gov.ng:25/",
+      "tag": [
+        {"name": "mailenable", "fullname": "MailEnable", "mailenable": {"version": "10.57"}, "cpe": []}
+      ]
+    }
+  ],
+  "whois": {
+    "net": {"organization": "MainOne Cable Company", "country": "NG"},
+    "asn": {"number": 37282, "name": "MAINONE-AS"}
+  },
+  "certificate": [
+    {
+      "subject_dn": "CN=example-ng.gov.ng",
+      "issuer_dn": "CN=Let's Encrypt Authority X3",
+      "validity": {"end": "2020-01-01T00:00:00Z"},
+      "fingerprint_sha256": "abc123"
+    }
+  ]
+}

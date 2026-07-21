@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "message": "api success",
+  "data": {
+    "count": 1,
+    "reports": [
+      {
+        "connected_ip_cnt": 8,
+        "country_code": ["NG"],
+        "score": "Safe",
+        "title": "Example NG Agency",
+        "url": "https://example-ng.gov.ng",
+        "technologies": [
+          {"tech_name": "WordPress", "logo_url": "https://example.com/wordpress.svg"},
+          {"tech_name": "PHP", "logo_url": "https://example.com/php.svg"},
+          {"tech_name": "Nginx", "logo_url": "https://example.com/nginx.svg"}
+        ]
+      }
+    ]
+  }
+}
