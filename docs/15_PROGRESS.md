@@ -5,8 +5,8 @@
 
 ## Current position
 
-**Phase:** WP3 scaffolding in progress — engine machinery built and live-verified; real pack content
-gated on NDPR/CBN source documents.
+**Phase:** WP3 engineering complete (gated externally — see below); WP4 (report generation) built and
+live-verified against the real `nigeria-banking` pack.
 **Next action:** See top entry of `16_SESSION_LOG.md`.
 
 ## Work package status
@@ -16,8 +16,8 @@ gated on NDPR/CBN source documents.
 | WP0 | Project scaffold | ✅ Done |
 | WP1 | Discovery engine + providers | ✅ Done |
 | WP2 | CVE enrichment + risk scoring | ✅ Done |
-| WP3 | Compliance pack loader + mapping (differentiator) | 🟡 In progress — scaffolding done, gated on real NDPR/CBN docs |
-| WP4 | Report generation (PDF) | ⬜ Not started |
+| WP3 | Compliance pack loader + mapping (differentiator) | 🟡 Engineering complete — gated on (a) client's LLM provider choice (asked 2026-07-21, user said not yet decided) and (b) compliance-professional validation of pack content. Neither is code work. |
+| WP4 | Report generation (PDF) | ✅ Done — content model + PDF render, live-verified against the real pack |
 | WP5 | API + demo UI | ⬜ Not started |
 
 Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
@@ -131,33 +131,92 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   - `pytest` passes (75/75). First run of the new compliance tests downloads the ONNX embedding model
     (~80MB, one-time) — the only tests in this repo needing network access; every other test stays
     offline/fixture-driven.
+- **Real `nigeria-banking` pack authored.** The client placed the actual source documents into
+  `regulations/` mid-session (not flagged in advance — discovered via `git status` while staging the
+  WP3 scaffolding commit). Verified both by full read before acting on them:
+  - `NDPR-Implementation-Framework.pdf` — genuine NITDA "Nigeria Data Protection Regulation 2019:
+    Implementation Framework" (November 2020, signed DG Kashifu Inuwa Abdullahi).
+  - `risk based cybersecurity framework final.pdf` — genuine CBN "Risk-Based Cybersecurity Framework
+    and Guidelines for Deposit Money Banks and Payment Service Providers" (circular
+    BSD/DIR/GEN/LAB/11/25, October 2018, effective January 1, 2019).
+  - User confirmed (via explicit question, not assumed): author the real pack now, and commit the
+    source PDFs — they're publicly issued by NITDA/CBN for compliance guidance, no confidentiality
+    markings.
+  - Built `packs/nigeria-banking/{pack.yaml, frameworks/{ndpr,cbn}.yaml, documents/*.pdf}` per
+    `docs/21_COMPLIANCE_PACKS.md`'s layout. **9 NDPR clauses + 12 CBN clauses**, every `ref`/`title`/
+    `summary` cites a real article/section re-read directly from the source PDFs (e.g. "NDPR Art. 4.1(5)
+    — Annual data protection audit", "CBN Appendix IV §6 — Patch management and penetration testing") —
+    none fabricated from memory. `finding_hints` chosen for relevance to passive attack-surface findings
+    (exposed/unpatched services, admin panels, default credentials, breach/incident timelines, DPO/CISO
+    governance gaps).
+  - **Not yet done:** compliance-professional validation of the clause selection (`packs/README.md` and
+    `21_COMPLIANCE_PACKS.md`'s validation note both flag this explicitly — don't let a client rely on
+    the mapping output before that review happens).
+  - Live-verified: pack loads (`load_pack`), ingests (21 clauses in the ChromaDB collection), and
+    retrieval ranks sensibly — an exposed-cPanel-with-default-credentials finding correctly ranks
+    "CBN Appendix IV §1 (Access Control)" first; CVE-bearing findings rank CBN's vulnerability-management/
+    patch clauses highest. New `tests/test_nigeria_banking_pack.py` (4 tests) locks in pack structure and
+    one retrieval-ranking case. `pytest` passes (79/79).
+
+- **WP4 · Report generation.** Built `m516/report/{template,render}.py` per `22_BUILD_PLAN.md` FR-4.
+  `template.py` assembles a pack-agnostic `ReportData` (asset inventory, ranked findings, compliance
+  gap analysis grouped by clause, remediation roadmap, executive summary) purely from real pipeline
+  output (`DiscoveryResult`, `Finding[]`, optional `CompliancePack`) — no LLM narrative, since none is
+  wired (same honest-partial stance as `mapper.py`; BR-5, no fabrication). The executive summary and
+  compliance-gap text are templated from computed counts, and explicitly say when clause references are
+  "candidates only" because no LLM classifier is configured, rather than implying a verdict that wasn't
+  made. `render.py` lays this out as a PDF via **reportlab 5.0.0** (pure-Python wheel, no MSVC/system
+  toolchain needed — checked before adopting, same discipline as the chromadb pick below) — title page
+  with disclaimer, executive summary, asset inventory table, ranked findings table (severity
+  colour-coded), compliance gap table (status colour-coded), remediation roadmap, technical appendix.
+  Report is addressed via `pack.report_labels` (`report_title`, `primary_regulator`) when a pack is
+  passed — no hard-coded framework/country name in this module (golden rule).
+  - **Live-verified against the real `nigeria-banking` pack** (not just the test-stub): built two
+    representative findings (exposed cPanel, outdated ProFTPD), ran real retrieval (`map_finding` with
+    `llm_client=None`) against the real pack, rendered a real PDF, and extracted its text with `pypdf` to
+    confirm content — CBN clause refs/titles (e.g. "CBN §5.6 — 24-hour cyber-incident reporting", "CBN
+    Appendix IV §2 — Secure System Configuration Management") render correctly in the actual PDF. (A
+    console printout of the same data showed `�` for `§` — that was a PowerShell codepage artifact, not
+    a bug; the PDF text itself, and the pack YAML on disk, are correct UTF-8.)
+  - `pypdf==6.14.2` added as a dependency — used by `tests/test_report_render.py` to assert on real
+    extracted PDF text rather than just "a file exists", same "no engine code should merely subsist on
+    a mock" instinct as the rest of this project's test suite.
+  - `pytest` passes (87/87, +8 new: `test_report_template.py`, `test_report_render.py`).
 
 ## In progress
 
-- WP3 scaffolding done; blocked on real NDPR/CBN source documents to author the actual `nigeria-banking`
-  pack content and wire an LLM for the mapping step.
+- WP3: pack content authored and engine-verified; still needs (a) compliance-professional validation of
+  clause content before client reliance, and (b) an LLM wired into `mapper.py`'s classification step
+  (`llm_client` parameter is ready). **Asked the client directly this session (2026-07-21) which LLM
+  provider to use — answer: not decided yet, revisit later.** Nothing further to build here until either
+  gate clears.
+- WP4: report generation is functionally complete against current data (compliance sections will read
+  "unmapped"/candidate-only until WP3's LLM step is wired — this is intentional, not a WP4 gap). No API
+  endpoint to trigger report generation yet — that's WP5 (`m516/api/**`).
 
 ## Blocked / gating decisions (resolve with client)
 
 - [ ] Confirm demo domain (small Nigerian bank or safe proxy) — **`mutualtrustmfb.com` recommended**
   based on the 6-domain triage (richest real exposure, single unambiguous domain). See Completed above.
-- [ ] Obtain/confirm NDPR + CBN source documents (needed to author the real `nigeria-banking` pack —
-  engine-side loader/ingest/retrieve machinery is built and working, just has nothing real to load yet).
+- [x] Obtain/confirm NDPR + CBN source documents — done: real documents received, verified genuine, and
+  used to author `packs/nigeria-banking/`. See Completed above.
 - [x] Confirm first providers to wire live — done: Netlas + Criminal IP + InternetDB, all live-verified.
-- [ ] Agree who validates compliance mappings.
+- [ ] Agree who validates compliance mappings — pack content is authored but not yet reviewed by a
+  qualified compliance professional (see Completed above).
 - [ ] Confirm IP-ownership position (SOW §12).
-- [ ] Choose an LLM provider for the compliance-mapping step (Anthropic recommended, not yet decided).
+- [ ] Choose an LLM provider for the compliance-mapping step (Anthropic recommended; asked client
+  directly 2026-07-21, still not decided — revisit later, not blocking other work).
 
 ## Metrics
 
 | Metric | Value |
 |---|---|
-| WPs complete | 3 of 6 (WP3 scaffolding in progress, not counted done) |
-| Modules built | 2 of 4 |
+| WPs complete | 4 of 6 (WP3 engineering-complete but gated externally; WP4 done) |
+| Modules built | 4 of 4 (discovery, enrichment, compliance, report) — LLM classification step and API/UI remain |
 | Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
-| Frameworks ingested | 0 of 2 (real) — 1 fictional test-stub framework proves the pipeline |
-| Packs authored | 0 of 1 (`nigeria-banking`) — 1 test-stub pack for genericity proof |
-| Tests passing | 75 |
+| Frameworks ingested | 2 of 2 (real: NDPR + CBN) — plus 1 fictional test-stub framework for genericity proof |
+| Packs authored | 1 of 1 (`nigeria-banking`) — plus 1 test-stub pack for genericity proof |
+| Tests passing | 87 |
 
 ## Notes
 

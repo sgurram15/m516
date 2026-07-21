@@ -1,0 +1,9 @@
+id: nigeria-banking
+display_name: "Nigeria — Banking"
+home_country: NG
+sector: banking
+frameworks: [ndpr, cbn]
+report_labels:
+  primary_regulator: "CBN"
+  secondary_regulator: "NITDA"
+  report_title: "Regulatory Exposure & Compliance Assessment"

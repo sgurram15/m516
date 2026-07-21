@@ -6,6 +6,52 @@
 
 ---
 
+## Session 008 — 2026-07-21 — WP3 close-out + WP4: Report generation (PDF)
+
+- **Objective:** User said "continue wp3". Checked what WP3 actually still needed: engine machinery +
+  real pack were already done (Session 007); only remaining item was wiring an LLM into `mapper.py`'s
+  classify step. Asked the user directly which provider — answer: not decided yet. With that gated
+  externally, asked what to do next; user chose to start **WP4 · Report generation**.
+- **Files changed:** New `m516/report/{__init__,template,render}.py`; new
+  `tests/{test_report_template,test_report_render}.py`; `requirements.txt` (+reportlab==5.0.0,
+  +pypdf==6.14.2 — pypdf is test-only, used to assert on real extracted PDF text).
+- **Design/architecture changes:** `template.py` builds a pack-agnostic `ReportData` purely from real
+  pipeline output (`DiscoveryResult`, `Finding[]`, optional `CompliancePack`) — no LLM narrative, since
+  none is wired for WP3 either; executive summary and compliance-gap text are templated from computed
+  counts and explicitly flag when clause references are "candidates only, no LLM configured" rather than
+  implying a verdict (BR-5, same honest-partial pattern as `mapper.py`). `render.py` lays this out as a
+  PDF via reportlab (severity/status colour-coded tables), addressed via `pack.report_labels` when a
+  pack is given — no framework/country name hard-coded (golden rule). See `15_PROGRESS.md`'s WP4 entry
+  for full detail, including the live-verification run against the real `nigeria-banking` pack (two
+  representative findings → real retrieval → real PDF → text-extracted with `pypdf` to confirm CBN
+  clause refs/titles render correctly).
+- **New decisions:** None architectural. Confirmed with the user (not assumed): LLM provider choice for
+  compliance mapping remains open, and that's fine — it doesn't block WP4. reportlab chosen over
+  alternatives (e.g. WeasyPrint) because it's a pure-Python wheel needing no system toolchain, verified
+  to install cleanly before writing code against it (same discipline as the chromadb 1.5.9 pick).
+- **Pending work:** WP3's two external gates unchanged (LLM provider choice; compliance-professional
+  validation of pack content). WP4 has no API/UI trigger yet — `m516/pipeline.py` and `m516/api/` (WP5)
+  still don't exist; there is still no single function that runs discovery → findings → compliance →
+  report end-to-end (each module's tests/verification scripts call the next module directly). WP5 will
+  need to build that orchestration.
+- **Next session starting point (SINGLE NEXT ACTION):** Begin **WP5 · API + demo UI** per
+  `22_BUILD_PLAN.md` (FastAPI endpoints per `05_API_DESIGN.md` + the pipeline orchestrator + five React
+  screens) — OR, if the client has since chosen an LLM provider, wire it into `mapper.py` first (small,
+  additive — `LLMClient` Protocol is ready) before starting WP5. Check with the user which is more
+  urgent at the start of the next session; don't assume.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. Modules
+  1 (discovery), 2 (enrichment), 3 (compliance — engine + real pack, LLM step deferred), and 4 (report —
+  PDF, pack-driven, no LLM narrative) are all built and live-verified. Only Module 5 (API + demo UI,
+  WP5) and the pipeline orchestrator remain. Golden rule (engine universal, `nigeria-banking` pack holds
+  all NG/CBN/banking knowledge) honoured throughout — `m516/report/` takes zero pack-specific
+  assumptions, same as every other engine module.
+- **Open questions:** LLM provider for compliance mapping (asked again this session, still undecided —
+  not urgent, user will revisit)? Who validates NDPR/CBN clause mappings? IP ownership? Demo domain
+  formal sign-off (`mutualtrustmfb.com` recommended, Session 006)? "Port Scanner" naming for the eventual
+  WP5 frontend spec (still open, Session 006)?
+
+---
+
 ## Session 007 — 2026-07-21 — Streamlit mockup restyle + WP3 scaffolding
 
 - **Objective:** Continuation of the same day's session. Three follow-on asks: (1) restyle the Streamlit

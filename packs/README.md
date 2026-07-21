@@ -1,14 +1,25 @@
 # Compliance packs
 
-`nigeria-banking` (NDPR + CBN) is the one real pack the POC needs, and it's **not authored yet** — it's
-blocked on the client providing real NDPR + CBN source documents (open gating decision, see
-`docs/15_PROGRESS.md`).
+## `nigeria-banking` (NDPR + CBN) — authored
 
-Do not draft NDPR/CBN clause content from memory into a `nigeria-banking/` directory here. Per
-`docs/21_COMPLIANCE_PACKS.md`, this pack's content "must be complete and real" and "must be validated by
-a qualified compliance professional before any client relies on the output" — placeholder regulatory
-clause numbers under the real pack name risk being mistaken for authoritative material later.
+The real source documents arrived (placed by the client into `regulations/`, verified genuine, and
+copied into `nigeria-banking/documents/`):
 
-The pack format is fully specified in `docs/21_COMPLIANCE_PACKS.md`. A working example (fictional
-framework, proves the engine loads/embeds/retrieves generically with zero pack-specific engine code) is
-in `tests/fixtures/packs/test-stub/`.
+- **NDPR** — Nigeria Data Protection Regulation 2019: Implementation Framework (NITDA, issued
+  November 2020).
+- **CBN** — Risk-Based Cybersecurity Framework and Guidelines for Deposit Money Banks and Payment
+  Service Providers (Central Bank of Nigeria, Banking Supervision Dept., October 2018).
+
+`pack.yaml` + `frameworks/ndpr.yaml` + `frameworks/cbn.yaml` contain real clause metadata: every
+`ref`, `title` and `summary` cites an actual article/section of the source documents above — nothing
+is fabricated. 9 NDPR clauses + 12 CBN clauses, covering the themes most relevant to passive
+attack-surface findings (exposed/unpatched services, access control, data breach notification
+timelines, DPO/CISO governance, vulnerability management, cross-border data transfer).
+
+**Still required before any client relies on the output** (per `docs/21_COMPLIANCE_PACKS.md`'s
+validation note, NFR-SEC): a qualified compliance professional must review the clause selection and
+citations. This pack is a solid engineering-grade first draft, not a legal sign-off.
+
+The pack format is fully specified in `docs/21_COMPLIANCE_PACKS.md`. A second, obviously-fictional
+pack (`tests/fixtures/packs/test-stub/`) proves the engine loads/embeds/retrieves generically with
+zero pack-specific engine code — keep using that one for engine-generic tests, not `nigeria-banking`.

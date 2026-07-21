@@ -1,8 +1,8 @@
 # 18 · Repository Structure
 
 > **Status:** Living · Updated whenever files are added/moved (per `CLAUDE.md` end-of-session
-> checklist). Reflects the tree as of the WP3 scaffolding addition (engine machinery only, no real
-> pack content — see `docs/15_PROGRESS.md`).
+> checklist). Reflects the tree as of the real `nigeria-banking` pack being authored (see
+> `docs/15_PROGRESS.md`).
 
 ```
 M516/
@@ -33,8 +33,15 @@ M516/
 │   └── riskscoring.jpg
 │
 ├── packs/
-│   └── README.md               # Explains nigeria-banking is pending real NDPR/CBN documents —
-│                                # do NOT draft placeholder regulatory content here (see docs/15_PROGRESS.md)
+│   ├── README.md               # Explains the nigeria-banking pack's provenance + validation status
+│   └── nigeria-banking/        # The real POC pack (NDPR + CBN) — authored from genuine source docs
+│       ├── pack.yaml
+│       ├── frameworks/
+│       │   ├── ndpr.yaml       # 9 real clauses, each citing an actual NDPR article/section
+│       │   └── cbn.yaml        # 12 real clauses, each citing an actual CBN framework section
+│       └── documents/
+│           ├── ndpr_implementation_framework.pdf   # NITDA, Nov 2020 (source of truth for ndpr.yaml)
+│           └── cbn_cybersecurity_framework.pdf     # CBN Banking Supervision, Oct 2018 (source for cbn.yaml)
 │
 ├── m516/                      # The engine (package name matches the project)
 │   ├── __init__.py            # __version__
@@ -58,11 +65,14 @@ M516/
 │   │   ├── scoring.py         # Deterministic contextual risk scoring (ADR-007, BR-3 — no LLM)
 │   │   ├── detection_level.py # Red/yellow/green rules for findings + certificate status
 │   │   └── port_risk.py       # CVE-independent port-type risk labels (mockup-informed)
-│   └── compliance/            # Module 3 — WP3 scaffolding (engine machinery; no real pack yet)
-│       ├── pack_loader.py     # CompliancePack/Framework/Clause + load_pack() (docs/21_COMPLIANCE_PACKS.md)
-│       ├── ingest.py          # Embeds clauses into ChromaDB (local ONNX embedding, no API key)
-│       ├── retrieve.py        # retrieve_clauses(): finding -> candidate ClauseMatch[]
-│       └── mapper.py          # ComplianceMapping + map_finding(); LLM step stubbed (llm_client=None)
+│   ├── compliance/             # Module 3 (engine machinery done; real nigeria-banking pack authored)
+│   │   ├── pack_loader.py     # CompliancePack/Framework/Clause + load_pack() (docs/21_COMPLIANCE_PACKS.md)
+│   │   ├── ingest.py          # Embeds clauses into ChromaDB (local ONNX embedding, no API key)
+│   │   ├── retrieve.py        # retrieve_clauses(): finding -> candidate ClauseMatch[]
+│   │   └── mapper.py          # ComplianceMapping + map_finding(); LLM step stubbed (llm_client=None)
+│   └── report/                 # Module 4 (WP4) — pack-agnostic, no LLM narrative (none wired yet)
+│       ├── template.py        # build_report_data(): DiscoveryResult+Finding[]+pack -> ReportData
+│       └── render.py          # render_pdf(): ReportData -> audit-ready PDF (reportlab)
 │
 ├── demo/                       # Dev visualization tool — NOT the WP5 React UI
 │   ├── streamlit_app.py       # `streamlit run demo/streamlit_app.py` — dark theme, sidebar-navigated
@@ -85,6 +95,9 @@ M516/
     ├── test_ingest.py         # Clause embedding into ChromaDB, idempotent re-ingest
     ├── test_retrieve.py       # Semantic clause retrieval for a Finding (needs the ONNX model, see below)
     ├── test_mapper.py         # map_finding() with/without an llm_client
+    ├── test_nigeria_banking_pack.py  # Real pack loads, real citations present, retrieval sanity-check
+    ├── test_report_template.py # build_report_data(): counts, gap grouping, honest-unmapped, roadmap
+    ├── test_report_render.py   # render_pdf(): real PDF produced, text-extractable via pypdf
     └── fixtures/
         ├── netlas_host.json, criminalip_domain_reports.json, internetdb_ip.json, censys_host.json,
         │   nvd_log4j.json, nvd_empty.json   # Captured/representative provider JSON, offline
@@ -96,11 +109,13 @@ M516/
 
 ## Notes
 
-- `packs/nigeria-banking/` does **not** exist yet — deliberately. See `packs/README.md` and
-  `docs/15_PROGRESS.md`: drafting placeholder NDPR/CBN clause content risks it being mistaken for real
-  regulatory guidance. Author it only once real source documents arrive from the client.
-- `m516/report/`, `m516/pipeline.py`, `m516/api/` are introduced module-by-module across WP4–WP5 per
-  `docs/22_BUILD_PLAN.md`. Don't create them ahead of the WP that needs them.
+- `packs/nigeria-banking/` is now authored from genuine NDPR/CBN source documents — see
+  `packs/README.md` and `docs/15_PROGRESS.md` for provenance and the still-open compliance-professional
+  validation step required before any client relies on the output.
+- `m516/report/` (WP4) is now built. `m516/pipeline.py`, `m516/api/` are still introduced module-by-module
+  in WP5 per `docs/22_BUILD_PLAN.md` — there is still no single function wiring
+  discovery → findings → compliance mapping → report end-to-end; each module's tests call the next
+  module directly. Don't create the orchestrator ahead of WP5.
 - `frontend/` is introduced in WP5 only — `demo/` is a separate, permanent dev convenience, not a
   precursor to it.
 - `test_ingest.py`/`test_retrieve.py` are the only tests in this repo that need network access (first

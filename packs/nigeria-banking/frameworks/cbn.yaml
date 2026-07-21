@@ -1,0 +1,149 @@
+id: CBN
+display_name: "CBN Risk-Based Cybersecurity Framework and Guidelines for DMBs and PSPs"
+issuing_body: "Central Bank of Nigeria (Banking Supervision Department)"
+documents:
+  - documents/cbn_cybersecurity_framework.pdf
+clauses:
+  - ref: "CBN §2.4.5"
+    title: "Appointment of a Chief Information Security Officer"
+    summary: >
+      The Board of every DMB/PSP shall appoint or designate a qualified individual as Chief
+      Information Security Officer (CISO), responsible for overseeing and implementing the
+      institution's cybersecurity programme.
+    finding_hints:
+      - "no named security owner"
+      - "governance gap"
+
+  - ref: "CBN §2.10"
+    title: "Cybersecurity strategy, framework and policy review"
+    summary: >
+      Board-approved cybersecurity policy documents shall be continuously reviewed and updated
+      at least annually, or when there are significant changes to the institution's cyber-risk
+      exposure or emerging technologies.
+    finding_hints:
+      - "stale configuration"
+      - "outdated policy"
+      - "no periodic review"
+
+  - ref: "CBN §3.7 / §3.9"
+    title: "Vulnerability, threat and resilience assessment"
+    summary: >
+      A DMB/PSP shall ensure consistent conduct of risk assessments, vulnerability assessments
+      and threat analysis to detect and evaluate risk to its information assets and determine
+      the appropriateness of existing security controls.
+    finding_hints:
+      - "known cve"
+      - "vulnerable software"
+      - "unpatched"
+      - "missing security update"
+
+  - ref: "CBN Appendix III §1 (Know Your Environment)"
+    title: "Asset, software and network inventory"
+    summary: >
+      A DMB/PSP shall maintain an up-to-date inventory of authorized hardware, software, network
+      devices and internal/external network connections; unauthorized software and hardware
+      identified on the network shall be documented and removed.
+    finding_hints:
+      - "unknown service"
+      - "shadow it"
+      - "legacy software"
+      - "unauthorized exposure"
+      - "exposed service"
+
+  - ref: "CBN Appendix IV §1 (Access Control)"
+    title: "Access control based on least privilege"
+    summary: >
+      Access to information assets, resources and connected services at any time shall be
+      limited to only authorized users, services, processes or devices, based on the principle
+      of least privilege and guided by an access control matrix.
+    finding_hints:
+      - "exposed admin panel"
+      - "default credentials"
+      - "open management interface"
+      - "unauthenticated access"
+      - "open port"
+
+  - ref: "CBN Appendix IV §2 (Secure System Configuration Management)"
+    title: "Minimum security baseline configuration"
+    summary: >
+      A DMB/PSP shall develop and maintain minimum security baseline configurations (anti-malware,
+      system security settings) for workstations, servers, applications and network devices, and
+      audit compliance with preconfigured security settings.
+    finding_hints:
+      - "misconfiguration"
+      - "default configuration"
+      - "weak tls"
+      - "expired certificate"
+      - "outdated software"
+
+  - ref: "CBN Appendix IV §6 (Vulnerability Management)"
+    title: "Patch management and penetration testing"
+    summary: >
+      Vulnerability assessments shall be conducted at least quarterly (or after significant
+      infrastructure changes), penetration tests at least annually and more frequently on
+      internet-facing systems, and security patches deployed promptly per an approved patch
+      management policy.
+    finding_hints:
+      - "unpatched"
+      - "known cve"
+      - "outdated software"
+      - "end of life"
+      - "missing patch"
+
+  - ref: "CBN §4.3 (Cyber-Threat Intelligence)"
+    title: "Cyber-threat intelligence programme"
+    summary: >
+      A DMB/PSP shall establish a Cyber-Threat Intelligence programme to proactively identify,
+      detect and mitigate potential cyber-threats, attack vectors and risks to its information
+      assets.
+    finding_hints:
+      - "emerging threat"
+      - "known exploit"
+      - "actively exploited"
+
+  - ref: "CBN §5.6"
+    title: "24-hour cyber-incident reporting"
+    summary: >
+      A DMB/PSP is required to report all cyber-incidents, whether successful or unsuccessful,
+      not later than 24 hours after detection, to the Director of Banking Supervision, Central
+      Bank of Nigeria.
+    finding_hints:
+      - "data breach"
+      - "compromise"
+      - "security incident"
+      - "unauthorized access"
+
+  - ref: "CBN Appendix IV §8 (Incident Response)"
+    title: "Incident response and business continuity"
+    summary: >
+      A DMB/PSP shall maintain and test Disaster Recovery/Business Continuity Plans and an
+      approved cyber-incident response plan, supported by a dedicated incident response team.
+    finding_hints:
+      - "no incident response plan"
+      - "no disaster recovery plan"
+      - "unplanned outage"
+      - "service unavailable"
+
+  - ref: "CBN §6 (Compliance with Statutory and Regulatory Requirements)"
+    title: "Statutory compliance obligations"
+    summary: >
+      The Board and Senior Management shall ensure compliance with the Nigerian Cybercrimes
+      (Prohibition, Prevention etc.) Act 2015 and all CBN directives relating to cybersecurity,
+      to avoid breaches of legal, statutory and regulatory obligations.
+    finding_hints:
+      - "regulatory gap"
+      - "non-compliance"
+
+  - ref: "CBN Appendix I (Critical Systems and Cyber-Incidents)"
+    title: "Critical system exposure"
+    summary: >
+      A "critical system" is any IT infrastructure whose unavailability, corruption, unauthorized
+      access or interception of stored/processed/transmitted information would result in
+      significant financial loss and negatively impact business operations or customer service.
+    finding_hints:
+      - "core banking"
+      - "payment system"
+      - "internet banking"
+      - "atm"
+      - "pos"
+      - "swift"
