@@ -25,6 +25,10 @@ class Config:
     censys_api_key: str | None
     nvd_api_key: str | None
     cache_ttl_seconds: int
+    packs_root: str
+    default_pack_id: str | None
+    report_output_dir: str
+    chroma_path: str
 
 
 def load_config() -> Config:
@@ -37,4 +41,8 @@ def load_config() -> Config:
         censys_api_key=os.environ.get("CENSYS_API_KEY") or None,
         nvd_api_key=os.environ.get("NVD_API_KEY") or None,
         cache_ttl_seconds=int(os.environ.get("CACHE_TTL_SECONDS", 86400)),
+        packs_root=os.environ.get("PACKS_ROOT", "packs"),
+        default_pack_id=os.environ.get("DEFAULT_PACK_ID") or None,
+        report_output_dir=os.environ.get("REPORT_OUTPUT_DIR", ".reports"),
+        chroma_path=os.environ.get("CHROMA_PATH", ".chroma"),
     )

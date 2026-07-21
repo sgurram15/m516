@@ -19,6 +19,7 @@ M516/
 │   ├── 01_REQUIREMENTS.md
 │   ├── 02_ARCHITECTURE.md
 │   ├── 03_DOMAIN_MODEL.md
+│   ├── 05_API_DESIGN.md       # FastAPI endpoint contracts (authored in WP5's backend half)
 │   ├── 07_BACKEND_ARCHITECTURE.md
 │   ├── 12_DECISION_LOG.md     # ADRs
 │   ├── 15_PROGRESS.md         # Current state — read second, every session
@@ -52,6 +53,7 @@ M516/
 │   ├── models.py              # Service / Asset / DiscoveryResult (docs/03_DOMAIN_MODEL.md §1)
 │   ├── discovery.py           # Module 1 orchestrator: run providers, merge by IP, WAF detection
 │   ├── findings.py            # Module 2 orchestrator + Finding: services -> ranked findings
+│   ├── pipeline.py            # WP5: run_scan() wires Modules 1-4 in sequence, on_stage() progress hook
 │   ├── providers/
 │   │   ├── base.py            # BaseProvider interface + detect_waf()
 │   │   ├── dns_resolve.py     # Shared passive DNS helper (InternetDB, Criminal IP, Censys)
@@ -70,9 +72,14 @@ M516/
 │   │   ├── ingest.py          # Embeds clauses into ChromaDB (local ONNX embedding, no API key)
 │   │   ├── retrieve.py        # retrieve_clauses(): finding -> candidate ClauseMatch[]
 │   │   └── mapper.py          # ComplianceMapping + map_finding(); LLM step stubbed (llm_client=None)
-│   └── report/                 # Module 4 (WP4) — pack-agnostic, no LLM narrative (none wired yet)
-│       ├── template.py        # build_report_data(): DiscoveryResult+Finding[]+pack -> ReportData
-│       └── render.py          # render_pdf(): ReportData -> audit-ready PDF (reportlab)
+│   ├── report/                 # Module 4 (WP4) — pack-agnostic, no LLM narrative (none wired yet)
+│   │   ├── template.py        # build_report_data(): DiscoveryResult+Finding[]+pack -> ReportData
+│   │   └── render.py          # render_pdf(): ReportData -> audit-ready PDF (reportlab)
+│   └── api/                    # WP5 backend half — FastAPI, no business logic (thin over pipeline.py)
+│       ├── state.py           # In-memory ScanState dict — deliberately not Postgres, see 15_PROGRESS.md
+│       ├── schemas.py          # Pydantic response models, each a thin projection of an engine dataclass
+│       ├── routes.py           # POST /api/scans, GET .../{dashboard,assets,findings,compliance,report.pdf}, /api/packs, /api/health
+│       └── app.py              # create_app() factory — `uvicorn m516.api.app:create_app --factory`
 │
 ├── demo/                       # Dev visualization tool — NOT the WP5 React UI
 │   ├── streamlit_app.py       # `streamlit run demo/streamlit_app.py` — dark theme, sidebar-navigated
@@ -98,6 +105,8 @@ M516/
     ├── test_nigeria_banking_pack.py  # Real pack loads, real citations present, retrieval sanity-check
     ├── test_report_template.py # build_report_data(): counts, gap grouping, honest-unmapped, roadmap
     ├── test_report_render.py   # render_pdf(): real PDF produced, text-extractable via pypdf
+    ├── test_pipeline.py        # run_scan(): stage order, honest-unmapped compliance, pdf naming
+    ├── test_api_scans.py       # FastAPI TestClient: full scan lifecycle, 404/400/409 error paths
     └── fixtures/
         ├── netlas_host.json, criminalip_domain_reports.json, internetdb_ip.json, censys_host.json,
         │   nvd_log4j.json, nvd_empty.json   # Captured/representative provider JSON, offline
@@ -112,11 +121,9 @@ M516/
 - `packs/nigeria-banking/` is now authored from genuine NDPR/CBN source documents — see
   `packs/README.md` and `docs/15_PROGRESS.md` for provenance and the still-open compliance-professional
   validation step required before any client relies on the output.
-- `m516/report/` (WP4) is now built. `m516/pipeline.py`, `m516/api/` are still introduced module-by-module
-  in WP5 per `docs/22_BUILD_PLAN.md` — there is still no single function wiring
-  discovery → findings → compliance mapping → report end-to-end; each module's tests call the next
-  module directly. Don't create the orchestrator ahead of WP5.
-- `frontend/` is introduced in WP5 only — `demo/` is a separate, permanent dev convenience, not a
-  precursor to it.
+- `m516/report/` (WP4) and `m516/pipeline.py` + `m516/api/` (WP5 backend half) are now built —
+  `run_scan()` is the one function wiring discovery → findings → compliance mapping → report
+  end-to-end. `frontend/` (WP5's React half) is still not started — `demo/` is a separate, permanent
+  dev convenience, not a precursor to it.
 - `test_ingest.py`/`test_retrieve.py` are the only tests in this repo that need network access (first
   run downloads ChromaDB's `all-MiniLM-L6-v2` ONNX model, ~80MB, one-time, then fully offline).

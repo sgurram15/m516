@@ -125,6 +125,10 @@ def test_registry_enables_only_providers_with_keys_present():
         censys_api_key=None,
         nvd_api_key=None,
         cache_ttl_seconds=86400,
+        packs_root="packs",
+        default_pack_id=None,
+        report_output_dir=".reports",
+        chroma_path=".chroma",
     )
 
     providers = get_enabled_providers(config)

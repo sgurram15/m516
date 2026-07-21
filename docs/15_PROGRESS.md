@@ -5,8 +5,8 @@
 
 ## Current position
 
-**Phase:** WP3 engineering complete (gated externally — see below); WP4 (report generation) built and
-live-verified against the real `nigeria-banking` pack.
+**Phase:** WP5 split into two halves (user's call): **backend half done this session** — pipeline
+orchestrator + FastAPI API, offline-verified. React frontend is the remaining half, not started.
 **Next action:** See top entry of `16_SESSION_LOG.md`.
 
 ## Work package status
@@ -18,7 +18,7 @@ live-verified against the real `nigeria-banking` pack.
 | WP2 | CVE enrichment + risk scoring | ✅ Done |
 | WP3 | Compliance pack loader + mapping (differentiator) | 🟡 Engineering complete — gated on (a) client's LLM provider choice (asked 2026-07-21, user said not yet decided) and (b) compliance-professional validation of pack content. Neither is code work. |
 | WP4 | Report generation (PDF) | ✅ Done — content model + PDF render, live-verified against the real pack |
-| WP5 | API + demo UI | ⬜ Not started |
+| WP5 | API + demo UI | 🟡 Backend half done (pipeline + FastAPI API, `docs/05_API_DESIGN.md`); React frontend not started |
 
 Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
@@ -182,6 +182,38 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
     extracted PDF text rather than just "a file exists", same "no engine code should merely subsist on
     a mock" instinct as the rest of this project's test suite.
   - `pytest` passes (87/87, +8 new: `test_report_template.py`, `test_report_render.py`).
+- **WP5 (backend half) · Pipeline orchestrator + FastAPI API.** User chose to split WP5 (backend this
+  session, React frontend next) and to verify offline/fixture-based rather than with a live call.
+  Found a real doc gap while starting: `docs/05_API_DESIGN.md` and `docs/06_FRONTEND_ARCHITECTURE.md`
+  were referenced everywhere (`CLAUDE.md`, `22_BUILD_PLAN.md`, `18_REPOSITORY_STRUCTURE.md`) as if they
+  existed — `git log --all` showed neither ever did. Authored `05_API_DESIGN.md` this session;
+  `06_FRONTEND_ARCHITECTURE.md` remains for the frontend half.
+  - `m516/pipeline.py` (new) — `run_scan()` wires Modules 1-4 in sequence (discovery → enrichment →
+    compliance → report), calling an optional `on_stage(name)` callback between stages so a caller can
+    surface live progress (FR-5.1). Takes `pack_dir` as a parameter, never a hard-coded pack id
+    (golden rule) — any "nigeria-banking" default lives in deployment config, not engine code.
+  - `m516/api/` (new package) — `state.py` (in-memory `ScanState` dict — **deliberately not Postgres**;
+    WP0-WP4 never wired a DB, and `02_ARCHITECTURE.md` documents "no queues/workers" as intentional for
+    the POC; state is lost on restart, acceptable for a demo, not for production), `schemas.py` (thin
+    Pydantic projections of `Finding`/`ReportData`/etc. — no re-aggregation), `routes.py` (`POST
+    /api/scans`, `GET /api/scans/{id}` + `/dashboard` + `/assets` + `/findings` + `/compliance` +
+    `/report.pdf`, `GET /api/packs`, `GET /api/health`), `app.py` (`create_app()` factory).
+  - **"Live progress" without a queue:** `POST /api/scans` uses FastAPI's `BackgroundTasks.add_task()`,
+    which Starlette runs via its own threadpool — in-process deferred execution, not an external
+    worker/queue system, so it doesn't violate `02_ARCHITECTURE.md`'s "no queues/workers" decision.
+    Frontend (next session) polls `GET /api/scans/{id}` for `status`/`stage`.
+  - `m516/config.py`: added `packs_root`, `default_pack_id` (env `DEFAULT_PACK_ID`),
+    `report_output_dir`, `chroma_path` — all optional, sensible defaults, documented in `.env.example`.
+  - Verified **offline only**, per the user's explicit choice this session: `tests/test_pipeline.py`
+    and `tests/test_api_scans.py` monkeypatch discovery/NVD the same way `test_findings.py` already
+    does, and run against the fictional test-stub pack — FastAPI `TestClient` end-to-end through
+    `POST /api/scans` → poll → `/dashboard`/`/assets`/`/findings`/`/compliance`/`/report.pdf`, plus a
+    manual `curl`-equivalent smoke check that the app boots and `/api/health`+`/api/packs` respond
+    against the real `nigeria-banking` pack. **No live provider call was made this session** — a live
+    end-to-end run against `mutualtrustmfb.com` is still open, deferred to a future session by choice.
+  - `httpx` added to `requirements.txt` (was already a transitive FastAPI/TestClient dependency, now
+    pinned explicitly since tests import it directly).
+  - `pytest` passes (98/98, +11 new: `test_pipeline.py`, `test_api_scans.py`).
 
 ## In progress
 
@@ -191,8 +223,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   provider to use — answer: not decided yet, revisit later.** Nothing further to build here until either
   gate clears.
 - WP4: report generation is functionally complete against current data (compliance sections will read
-  "unmapped"/candidate-only until WP3's LLM step is wired — this is intentional, not a WP4 gap). No API
-  endpoint to trigger report generation yet — that's WP5 (`m516/api/**`).
+  "unmapped"/candidate-only until WP3's LLM step is wired — this is intentional, not a WP4 gap).
+- WP5: backend (pipeline + FastAPI API) done and offline-verified this session. **Still needed:** the
+  React frontend (5 screens per FR-5, `docs/06_FRONTEND_ARCHITECTURE.md` doesn't exist yet either — a
+  second doc gap, same as `05_API_DESIGN.md` was before this session) and one live end-to-end run
+  against a real domain (`mutualtrustmfb.com` recommended) — deferred by the user's own choice, not
+  forgotten.
 
 ## Blocked / gating decisions (resolve with client)
 
@@ -211,12 +247,12 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 
 | Metric | Value |
 |---|---|
-| WPs complete | 4 of 6 (WP3 engineering-complete but gated externally; WP4 done) |
-| Modules built | 4 of 4 (discovery, enrichment, compliance, report) — LLM classification step and API/UI remain |
+| WPs complete | 4 of 6 (WP3 engineering-complete but gated externally; WP4 done; WP5 backend half done) |
+| Modules built | 5 of 5 (discovery, enrichment, compliance, report, API/pipeline) — LLM classification step and the React frontend remain |
 | Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
 | Frameworks ingested | 2 of 2 (real: NDPR + CBN) — plus 1 fictional test-stub framework for genericity proof |
 | Packs authored | 1 of 1 (`nigeria-banking`) — plus 1 test-stub pack for genericity proof |
-| Tests passing | 87 |
+| Tests passing | 98 |
 
 ## Notes
 

@@ -6,6 +6,61 @@
 
 ---
 
+## Session 009 — 2026-07-21 — WP5 (backend half): pipeline orchestrator + FastAPI API
+
+- **Objective:** User said "start wp5". WP5 (`22_BUILD_PLAN.md`) is FastAPI + a 5-screen React frontend
+  + live progress — too big for one sitting. Used plan mode to scope it; asked the user two questions
+  before writing code: (1) split WP5 into backend-this-session/frontend-next vs. everything at once —
+  user chose **backend first**; (2) verify offline/fixtures vs. one live call against
+  `mutualtrustmfb.com` — user chose **offline/fixtures**.
+- **Files changed:** New `m516/pipeline.py` (`run_scan()`); new `m516/api/{__init__,state,schemas,
+  routes,app}.py`; new `docs/05_API_DESIGN.md`; new `tests/{test_pipeline,test_api_scans}.py`;
+  `m516/config.py` (+`packs_root`, `default_pack_id`, `report_output_dir`, `chroma_path`);
+  `tests/test_providers.py` (updated a direct `Config(...)` construction for the new fields);
+  `requirements.txt` (+`httpx`, pinned explicitly — was already a transitive dep); `.env.example`
+  (+`DEFAULT_PACK_ID`/`PACKS_ROOT`/`REPORT_OUTPUT_DIR`/`CHROMA_PATH`); `.gitignore` (+`.reports/`).
+- **Design/architecture changes:** Found a real doc gap while starting — `docs/05_API_DESIGN.md` and
+  `docs/06_FRONTEND_ARCHITECTURE.md` were referenced throughout the project (`CLAUDE.md`,
+  `22_BUILD_PLAN.md`, `18_REPOSITORY_STRUCTURE.md`) as if authored; `git log --all` showed neither ever
+  existed. Authored `05_API_DESIGN.md` this session (docs-first, ADR-013); `06_FRONTEND_ARCHITECTURE.md`
+  is left for the frontend half. Three architecture calls, all reconciled against
+  `docs/02_ARCHITECTURE.md`'s existing constraints rather than introducing new infra: (1) scan state is
+  an **in-memory dict**, not Postgres — WP0-WP4 never wired a DB and "no queues/workers" is already a
+  documented POC decision; (2) "live progress" (FR-5.1) uses FastAPI's `BackgroundTasks` (Starlette's
+  own threadpool — in-process, not an external worker/queue, so it doesn't violate that same decision);
+  (3) `pipeline.py` takes `pack_dir` as a parameter, never defaulting to `"nigeria-banking"` itself —
+  the golden rule holds even in the orchestrator. `m516/report/template.py`'s `ReportData` (built once
+  per scan) is reused directly for all four data endpoints — no re-aggregation logic in `m516/api/`.
+- **New decisions:** None architectural beyond what's above (no new ADR — these are applications of
+  ADR-002/007/009/010, not new tradeoffs). Confirmed with the user (not assumed): WP5 scope split and
+  offline-only verification for this session, both recorded above.
+- **Pending work:** WP5's React frontend (all 5 FR-5 screens) and `docs/06_FRONTEND_ARCHITECTURE.md`
+  are the only things left in WP5, and are entirely unstarted. One live end-to-end run against a real
+  domain (`mutualtrustmfb.com` recommended, Session 006) is also still open — deferred by choice, not
+  forgotten. WP3's two external gates (LLM provider choice, compliance-professional pack validation)
+  are unchanged and still block a "real" (non-`unmapped`) compliance section in any report the new API
+  produces.
+- **Next session starting point (SINGLE NEXT ACTION):** Build the WP5 React frontend against
+  `docs/05_API_DESIGN.md`'s contract — author `docs/06_FRONTEND_ARCHITECTURE.md` first (framework/
+  tooling choice, e.g. Vite+React+TypeScript, state/polling approach for scan progress), then the 5
+  screens (FR-5.1-5.5), reusing the honesty conventions already established in `demo/streamlit_app.py`
+  and `docs/05_API_DESIGN.md` (no "Port Scanner"/"Exploitation Scenario" framing implying active
+  scanning or fabricated LLM narrative; render `compliance status: unmapped` as "candidate, not yet
+  classified", never as a false "compliant"). Consider one live run against `mutualtrustmfb.com` once
+  the frontend exists, to see the whole thing end-to-end for the first time.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. All
+  four backend modules (discovery, enrichment, compliance, report) plus the orchestrator + FastAPI API
+  are built and tested (98/98, offline/fixture-based). `m516/pipeline.py::run_scan()` is the one
+  function that runs a full scan; `m516/api/app.py::create_app()` is the FastAPI app
+  (`uvicorn m516.api.app:create_app --factory`). Only the React frontend and the two external WP3 gates
+  (LLM provider, compliance validation) remain before the POC is demo-complete end-to-end.
+- **Open questions:** Frontend framework/tooling choice for WP5 (default: Vite+React+TypeScript, not
+  yet confirmed with user)? LLM provider (still undecided, not urgent)? Who validates NDPR/CBN
+  mappings? IP ownership? Demo domain formal sign-off (`mutualtrustmfb.com` recommended)? "Port
+  Scanner" naming for the real WP5 frontend spec (still open, Session 006)?
+
+---
+
 ## Session 008 — 2026-07-21 — WP3 close-out + WP4: Report generation (PDF)
 
 - **Objective:** User said "continue wp3". Checked what WP3 actually still needed: engine machinery +
