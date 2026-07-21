@@ -6,6 +6,57 @@
 
 ---
 
+## Session 007 — 2026-07-21 — Streamlit mockup restyle + WP3 scaffolding
+
+- **Objective:** Continuation of the same day's session. Three follow-on asks: (1) restyle the Streamlit
+  demo to visually match `ui screens/*.jpg` (dark theme, sidebar nav, 4 views); (2) switch it from
+  bulk-scanning a domain list to selecting and scanning one domain at a time; (3) start WP3 scaffolding
+  (compliance pack loader + ingest + retrieve) since real NDPR/CBN documents still aren't available —
+  engine machinery only, no real pack content.
+- **Files changed:** `.streamlit/config.toml` (new, dark theme); `demo/streamlit_app.py` (major
+  rewrite — sidebar-navigated Dashboard/Asset Discovery/Port Findings/Risk Scoring views; results now
+  persist in `st.session_state` since switching views re-runs the whole script; domain selectbox +
+  custom-domain option replaces the multi-line textarea; results accumulate across separate single-domain
+  runs). New `m516/compliance/` package (`pack_loader.py`, `ingest.py`, `retrieve.py`, `mapper.py`);
+  `packs/README.md` (new); `tests/fixtures/packs/test-stub/` (fictional pack); 4 new test files;
+  `requirements.txt` (+pyyaml, +chromadb).
+- **Design/architecture changes:** Streamlit: named the port-view **"Port Findings"** not "Port Scanner"
+  and the risk-card explanation **"Why it matters"** not "Exploitation Scenario" — both mockup labels
+  either implied active scanning (engine is passive) or LLM-generated narrative (that's WP4 scope, not
+  this deterministic module) — deliberate departures from a literal copy, not oversights. WP3: retrieval
+  unit is clauses (curated title+summary+finding_hints), not raw document chunks — see `15_PROGRESS.md`
+  for full reasoning. `mapper.py`'s LLM step is a `Protocol`-typed stub (`llm_client=None` today) so
+  wiring a real provider later is additive.
+- **New decisions:** Confirmed with the user this session, not architectural (no new ADR): (1) embedding
+  model is ChromaDB's default local `all-MiniLM-L6-v2`, no API key; (2) LLM wiring for compliance mapping
+  is deferred, not chosen yet. **Scope call flagged, not neutral**: did not draft NDPR/CBN clause content
+  under `packs/nigeria-banking/` even as a placeholder — `21_COMPLIANCE_PACKS.md` requires that pack's
+  content be "complete and real" and professionally validated; fabricating regulatory clause text risks
+  it being mistaken for authoritative material later. Used an obviously-fictional test-stub pack instead,
+  per the docs' own explicit allowance for proving genericity this way.
+- **Pending work:** WP3 real pack authoring still blocked on NDPR/CBN source documents (unchanged gating
+  decision, now more concrete: engine side is proven working, only content is missing). LLM provider for
+  mapping not yet chosen — Anthropic recommended, not decided. `chromadb` installed at 1.5.9 in
+  `requirements.txt` (not the originally-planned 0.5.x — that version's `chroma-hnswlib` dependency has
+  no prebuilt Windows/Python-3.12 wheel; re-verified the client API live at 1.5.9 before building against
+  it).
+- **Next session starting point (SINGLE NEXT ACTION):** Still **WP3**, now narrower: get NDPR + CBN
+  source documents from the client, author the real `packs/nigeria-banking/` pack against the
+  already-working `pack_loader`/`ingest`/`retrieve` machinery, and choose/wire an LLM for `mapper.py`'s
+  classification step. Everything mechanical is proven; only real content and one provider choice remain.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. Modules 1
+  (discovery, 4 providers) and 2 (enrichment, CVSS sub-scores + confidence + port-risk labels) are built
+  and live-verified. Module 3 (compliance) scaffolding is built and live-verified against real WP2
+  findings (retrieval correctly matches finding types to clause types) — only real regulatory content and
+  an LLM choice are missing, both external dependencies, not engineering work. `demo/streamlit_app.py` is
+  now a 4-view, mockup-styled, single-domain-scan tool with a red/yellow/green comparison dashboard.
+- **Open questions:** NDPR/CBN source docs (the actual blocker now)? LLM provider for compliance mapping?
+  Who validates mappings? IP ownership? Formal sign-off on `mutualtrustmfb.com` as demo domain? "Port
+  Scanner"/"Exploitation Scenario" naming — resolved in the demo tool itself this session (renamed), but
+  the same question still applies to the eventual real WP5 frontend spec.
+
+---
+
 ## Session 006 — 2026-07-21 — MFB triage, Streamlit overhaul, mockup-informed engine additions
 
 - **Objective:** Three follow-on asks in one continuous session after Session 005: (1) triage a list of

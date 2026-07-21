@@ -1,0 +1,5 @@
+ACME Fictional Security Standard — test fixture only, not a real regulation.
+
+This document exists to give the test-stub pack a structurally-complete `documents/` entry, matching
+the real pack layout in docs/21_COMPLIANCE_PACKS.md, even though m516/compliance/ingest.py does not
+currently read raw document text (it embeds clause metadata — see ingest.py's module docstring).

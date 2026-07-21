@@ -1,0 +1,22 @@
+id: ACME-STD
+display_name: "ACME Fictional Security Standard (test fixture — not a real regulation)"
+issuing_body: "ACME Regulatory Authority (fictional)"
+documents:
+  - documents/acme.txt
+clauses:
+  - ref: "ACME-STD 1.1"
+    title: "No exposed administrative interfaces"
+    summary: "Hosting control panels and administrative interfaces must not be directly reachable from the public internet without additional access controls."
+    finding_hints: ["admin panel", "cpanel", "control panel", "hosting panel"]
+  - ref: "ACME-STD 2.3"
+    title: "Database services must not be internet-facing"
+    summary: "Database ports must not accept connections directly from the public internet; access must be restricted to application-tier hosts."
+    finding_hints: ["open database", "exposed database", "mysql", "mariadb", "postgres"]
+  - ref: "ACME-STD 3.2"
+    title: "File transfer credentials must be encrypted in transit"
+    summary: "File transfer services must not permit plaintext credential transmission."
+    finding_hints: ["ftp", "unencrypted credential", "plaintext"]
+  - ref: "ACME-STD 4.1"
+    title: "Known-vulnerable software must be patched promptly"
+    summary: "Systems must not run software versions with publicly known, unpatched critical vulnerabilities for an extended period."
+    finding_hints: ["cve", "vulnerability", "unpatched", "outdated"]

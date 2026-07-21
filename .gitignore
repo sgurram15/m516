@@ -19,8 +19,8 @@ env/
 # Provider response cache (docs/07_BACKEND_ARCHITECTURE.md §6)
 .cache/
 
-# Vector store data (ChromaDB, WP3+)
-chroma_data/
+# Vector store data (ChromaDB — m516/compliance/ingest.py's default path)
+.chroma/
 
 # IDE / OS
 .vscode/

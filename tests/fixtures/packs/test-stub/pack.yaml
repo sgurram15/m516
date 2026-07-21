@@ -1,0 +1,8 @@
+id: test-stub
+display_name: "Test Stub — ACME Fictional Standard"
+home_country: ZZ
+sector: fictional
+frameworks: [acme]
+report_labels:
+  primary_regulator: "ACME Regulatory Authority (fictional, test fixture only)"
+  report_title: "Test Fixture Report"

@@ -5,7 +5,8 @@
 
 ## Current position
 
-**Phase:** WP2 complete → ready to start **WP3 (compliance pack loader + mapping)**.
+**Phase:** WP3 scaffolding in progress — engine machinery built and live-verified; real pack content
+gated on NDPR/CBN source documents.
 **Next action:** See top entry of `16_SESSION_LOG.md`.
 
 ## Work package status
@@ -15,7 +16,7 @@
 | WP0 | Project scaffold | ✅ Done |
 | WP1 | Discovery engine + providers | ✅ Done |
 | WP2 | CVE enrichment + risk scoring | ✅ Done |
-| WP3 | Compliance pack loader + mapping (differentiator) | ⬜ Not started |
+| WP3 | Compliance pack loader + mapping (differentiator) | 🟡 In progress — scaffolding done, gated on real NDPR/CBN docs |
 | WP4 | Report generation (PDF) | ⬜ Not started |
 | WP5 | API + demo UI | ⬜ Not started |
 
@@ -103,30 +104,60 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   sidebar item, both explicitly out of scope per `01_REQUIREMENTS.md` — **client confirmed 2026-07-21:
   neither is being built for the POC**, resolving both. The "Port Scanner" name/"Scan Date" label reading
   as active scanning (engine is strictly passive, ADR-001) is still open, not yet raised with the client.
+- **WP3 scaffolding started (engine machinery only — real pack content still gated).** Built
+  `m516/compliance/{pack_loader,ingest,retrieve,mapper}.py` per `docs/21_COMPLIANCE_PACKS.md`/
+  `03_DOMAIN_MODEL.md` §2. Deliberately did **not** draft NDPR/CBN clause content into
+  `packs/nigeria-banking/` — that pack "must be complete and real" and validated by a compliance
+  professional per the docs themselves; placeholder regulatory content under the real pack name risks
+  being mistaken for authoritative material. Instead proved genericity with an obviously-fictional
+  `tests/fixtures/packs/test-stub/` pack ("ACME-STD"), per `21_COMPLIANCE_PACKS.md`'s own explicit
+  allowance for this. `packs/README.md` explains the pending status.
+  - **Embedding:** ChromaDB's default `all-MiniLM-L6-v2` (local, ONNX, no API key — verified current
+    behaviour before using it). Retrieval unit is **clauses** (title+summary+finding_hints embedded),
+    not raw document text — a deliberate, documented scoping call, not the only valid reading of
+    `21_COMPLIANCE_PACKS.md`'s flow.
+  - **No LLM wired yet** (client chose to defer). `mapper.map_finding()` always does real retrieval;
+    without an `llm_client` it returns honest partial results (`status="unmapped"`, no fabricated
+    compliant/non-compliant verdict — BR-5). `LLMClient` is a small `Protocol` so wiring a real provider
+    later is additive, not a redesign.
+  - **chromadb installed at 1.5.9**, not the originally-planned 0.5.x — 0.5.x's `chroma-hnswlib`
+    dependency has no prebuilt Windows/Python-3.12 wheel and needs MSVC build tools this machine doesn't
+    have; 1.x ships a prebuilt backend. API re-verified live at 1.5.9 before writing real code against it
+    (same discipline as every other provider this project).
+  - **Live-verified against real WP2 data**: ingested the stub pack, retrieved clauses for all 19 real
+    findings from `mutualtrustmfb.com` — retrieval sensibly matched cPanel findings to "No exposed
+    administrative interfaces", FTP to "File transfer credentials...", etc. Every mapping correctly came
+    back `status="unmapped"`.
+  - `pytest` passes (75/75). First run of the new compliance tests downloads the ONNX embedding model
+    (~80MB, one-time) — the only tests in this repo needing network access; every other test stays
+    offline/fixture-driven.
 
 ## In progress
 
-- Nothing in active build yet. Awaiting start of WP3.
+- WP3 scaffolding done; blocked on real NDPR/CBN source documents to author the actual `nigeria-banking`
+  pack content and wire an LLM for the mapping step.
 
 ## Blocked / gating decisions (resolve with client)
 
 - [ ] Confirm demo domain (small Nigerian bank or safe proxy) — **`mutualtrustmfb.com` recommended**
   based on the 6-domain triage (richest real exposure, single unambiguous domain). See Completed above.
-- [ ] Obtain/confirm NDPR + CBN source documents (needed for WP3).
+- [ ] Obtain/confirm NDPR + CBN source documents (needed to author the real `nigeria-banking` pack —
+  engine-side loader/ingest/retrieve machinery is built and working, just has nothing real to load yet).
 - [x] Confirm first providers to wire live — done: Netlas + Criminal IP + InternetDB, all live-verified.
 - [ ] Agree who validates compliance mappings.
 - [ ] Confirm IP-ownership position (SOW §12).
+- [ ] Choose an LLM provider for the compliance-mapping step (Anthropic recommended, not yet decided).
 
 ## Metrics
 
 | Metric | Value |
 |---|---|
-| WPs complete | 3 of 6 |
+| WPs complete | 3 of 6 (WP3 scaffolding in progress, not counted done) |
 | Modules built | 2 of 4 |
 | Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
-| Frameworks ingested | 0 of 2 |
-| Packs authored | 0 of 1 (`nigeria-banking`) |
-| Tests passing | 64 |
+| Frameworks ingested | 0 of 2 (real) — 1 fictional test-stub framework proves the pipeline |
+| Packs authored | 0 of 1 (`nigeria-banking`) — 1 test-stub pack for genericity proof |
+| Tests passing | 75 |
 
 ## Notes
 
