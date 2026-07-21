@@ -111,6 +111,7 @@ def from_records(data: dict, domain: str) -> list[Asset]:
                 version=software.get("version"),
                 cpe=software.get("cpe"),
                 banner=port_entry.get("banner"),
+                sources={"netlas"},
             )
         )
 

@@ -69,6 +69,7 @@ def from_records(data: dict, domain: str, ip: str | None) -> list[Asset]:
                 protocol=_ASSUMED_PROTOCOL,
                 name=tech.get("tech_name"),
                 product=tech.get("tech_name"),
+                sources={"criminalip"},
             )
             for tech in technologies
             if tech.get("tech_name")

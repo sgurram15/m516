@@ -1,0 +1,62 @@
+{
+  "result": {
+    "resource": {
+      "ip": "154.113.7.30",
+      "location": {
+        "continent": "Africa",
+        "country": "Nigeria",
+        "country_code": "NG",
+        "city": "Lagos"
+      },
+      "autonomous_system": {
+        "asn": 37282,
+        "description": "Main one Cable Company Nigeria Limited",
+        "name": "Main one Cable Company Nigeria Limited",
+        "country_code": "NG"
+      },
+      "services": [
+        {
+          "port": 21,
+          "protocol": "FTP",
+          "transport_protocol": "tcp",
+          "software": [
+            {"vendor": "proftpd_project", "product": "proftpd"}
+          ],
+          "cert": {
+            "parsed": {
+              "subject_dn": "CN=charming-goldberg.154-113-7-30.plesk.page",
+              "issuer_dn": "C=US, O=Let's Encrypt, CN=YR1",
+              "validity_period": {
+                "not_before": "2026-06-01T23:49:45Z",
+                "not_after": "2026-08-30T23:49:44Z"
+              }
+            }
+          }
+        },
+        {
+          "port": 53,
+          "protocol": "DNS",
+          "transport_protocol": "udp"
+        },
+        {
+          "port": 80,
+          "protocol": "HTTP",
+          "transport_protocol": "tcp",
+          "software": [
+            {"vendor": "f5", "product": "nginx"}
+          ]
+        },
+        {
+          "port": 8443,
+          "protocol": "HTTP",
+          "transport_protocol": "tcp",
+          "software": [
+            {"type": ["WEB_UI"]},
+            {"vendor": "parallels", "product": "parallels_plesk_panel"},
+            {"vendor": "parallels", "product": "plesk"}
+          ]
+        }
+      ]
+    }
+  }
+}

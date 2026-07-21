@@ -6,6 +6,45 @@
 
 ---
 
+## Session 005 — 2026-07-21 — Post-WP2: Censys + service provenance + detection levels
+
+- **Objective:** User-requested extension (not a new WP): wire up a newly-provided `CENSYS_API_KEY`,
+  add red/yellow/green "detection level" classification with explainable rules, track which API
+  captured each piece of data, and run the result against 2 real small-bank domains for the user's own
+  understanding (explicitly not client-facing this time).
+- **Files changed:** `m516/providers/censys.py` (new, 4th provider); `m516/models.py` (`Service.sources`,
+  merge-logic fix); `m516/providers/{netlas,criminalip,internetdb}.py` (tag `Service.sources`);
+  `m516/providers/registry.py` (censys entry); `m516/config.py` + `.env.example` (`CENSYS_API_KEY`);
+  `m516/enrichment/nvd.py` (`CVEMatch.match_confidence`, `_build_query` now returns confidence too);
+  `m516/enrichment/scoring.py` (`_explain()` appends broad-match caveat); `m516/findings.py`
+  (`Finding.match_confidence`); `m516/enrichment/detection_level.py` (new). Tests extended across
+  `test_models.py`, `test_providers.py`, `test_nvd.py`, `test_scoring.py`, `test_findings.py`; new
+  `test_detection_level.py`. `tests/fixtures/censys_host.json` added.
+- **Design/architecture changes:** See `15_PROGRESS.md`'s "Post-WP2 extension" entry for full detail.
+  Headline: Censys free tier can only use direct host-lookup-by-IP, not domain search (403 on the
+  latter, confirmed live). Service-level provenance was a real gap in WP1 (BR-6 was only honoured at
+  asset level), not scope creep. **A real correctness bug was found and fixed during this work**: naive
+  field-backfill on merge let one provider's CPE get grafted onto a different provider's product label
+  when they disagreed on what was running on a port — fixed to only combine fields when providers agree
+  on the product (BR-5, no fabrication).
+- **New decisions:** None architectural (no new ADR) — this extends already-decided patterns
+  (ADR-002 provider-agnostic, ADR-007 deterministic scoring). The detection-level rule criteria are
+  documented in `m516/enrichment/detection_level.py`'s docstring, not a formal ADR, since they're a
+  presentation overlay on existing severity/confidence data, not a new business rule.
+- **Pending work:** WP3 (compliance pack loader + mapping) not started — still the actual next WP.
+  Gating decisions unchanged and still open.
+- **Next session starting point (SINGLE NEXT ACTION):** Begin **WP3 · Compliance pack loader +
+  mapping** per `22_BUILD_PLAN.md` (same next action as Session 004 — this session was a detour, not a
+  WP). Needs NDPR/CBN source documents before real mapping can be validated.
+- **Context summary (rehydrate):** M516 = passive attack-surface + compliance-mapping platform. Modules
+  1 (discovery, now 4 providers) and 2 (enrichment) are built, live-verified, and now also produce
+  per-service provenance and a red/yellow/green detection-level overlay. Golden rule and passive-only
+  constraint unchanged. WP3 (compliance pack) is still the next real work package.
+- **Open questions:** demo domain? NDPR/CBN source docs? who validates mappings? IP ownership? (All
+  unchanged from Session 004 — this session didn't resolve any of them, by design.)
+
+---
+
 ## Session 004 — 2026-07-21 — WP2: CVE enrichment + risk scoring
 
 - **Objective:** Execute WP2 per `22_BUILD_PLAN.md` — services → CVEs (NVD by CPE) + CVSS +

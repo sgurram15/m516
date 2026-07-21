@@ -107,4 +107,10 @@ def _explain(
         parts.append(f"{staleness_note.capitalize()}.")
     if len(matches) > 1:
         parts.append(f"{len(matches)} known CVEs matched this service; showing the most severe.")
+    if primary.match_confidence == "broad":
+        parts.append(
+            "Version could not be confirmed by passive lookup, so this is a broader product-family "
+            "match, not a version-confirmed vulnerability — verify the running version before relying "
+            "on this finding."
+        )
     return " ".join(parts)

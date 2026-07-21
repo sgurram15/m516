@@ -50,6 +50,37 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   infra now that both discovery providers and NVD enrichment use it — keeps `07_BACKEND_ARCHITECTURE.md`
   §2's "no module imports a sibling module's internals" rule honoured as a second module started reusing
   Module 1's cache.
+- **Post-WP2 extension (user-requested, not a new WP): Censys + provenance + detection levels.**
+  Extended already-shipped WP1/WP2 code rather than starting WP3 early:
+  - `m516/providers/censys.py` — 4th provider, live-verified. Censys's free tier **cannot** use the
+    domain-search endpoint (403, paid-only: "Free users can only access this endpoint through the
+    Platform UI") but the direct host-lookup-by-IP endpoint works and returned the richest per-service
+    data of any provider so far (independently confirmed Netlas's nginx finding, plus ProFTPD/Postfix/
+    Dovecot/Plesk that Netlas didn't surface for the same host). Same domain→IP self-resolution pattern
+    as InternetDB.
+  - `Service.sources` (new field, mirrors `Asset.sources`) — WP1 only tracked provenance at the asset
+    level; "which API captured this specific port" needed service-level tracking. All 4 adapters now
+    tag it; `DiscoveryResult._merge_into` now unions sources and backfills missing service fields on a
+    port collision instead of silently dropping the second provider's data.
+  - **Correctness fix found via this extension, not before:** the naive service-field backfill let one
+    provider's `cpe` get grafted onto a *different* provider's `product` label when they disagreed on
+    what was actually running on a port (observed live: one provider said "Fathom", another's CPE was
+    for "Caddy" — an unrelated product — on the same port of `abmfbnigeria.com`). Fixed
+    `_merge_service_into` to only combine `version`/`cpe`/`banner` across providers when they *agree* on
+    the product name; a genuine disagreement is now left un-combined rather than fabricating a coherent-
+    looking but false finding (BR-5). Regression test added.
+  - `CVEMatch.match_confidence` / `Finding.match_confidence` ("exact" vs "broad") — makes the
+    version-confirmed-vs-not distinction (previously only expressed ad hoc in a hand-written report) a
+    real field. `scoring._explain()` now appends the verification caveat automatically for broad matches.
+  - `m516/enrichment/detection_level.py` (new) — deterministic red/yellow/green rules for findings and
+    certificate status; full criteria documented in the module docstring. Pure functions, fully tested,
+    no LLM (ADR-007).
+  - Ran live against 2 real small-bank domains for the user's own understanding (not client-facing —
+    output stayed a local file, not published). Result: both came back with **zero CVE-eligible
+    services** after the attribution fix — neither exposed enough fingerprintable version/CPE data for a
+    responsible NVD match. That's a "not evaluated" data-availability result, not a "green/clean" one;
+    the provenance tracking and the Caddy/Fathom catch were the actual value of that run.
+  - `pytest` passes (60/60).
 
 ## In progress
 
@@ -69,10 +100,10 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
 |---|---|
 | WPs complete | 3 of 6 |
 | Modules built | 2 of 4 |
-| Providers live | 3 (Netlas, Criminal IP, InternetDB) |
+| Providers live | 4 (Netlas, Criminal IP, Censys, InternetDB) |
 | Frameworks ingested | 0 of 2 |
 | Packs authored | 0 of 1 (`nigeria-banking`) |
-| Tests passing | 43 |
+| Tests passing | 60 |
 
 ## Notes
 

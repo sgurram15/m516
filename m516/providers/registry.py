@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from m516.config import Config
 from m516.providers.base import BaseProvider
+from m516.providers.censys import CensysProvider
 from m516.providers.criminalip import CriminalIPProvider
 from m516.providers.internetdb import InternetDBProvider
 from m516.providers.netlas import NetlasProvider
@@ -21,6 +22,11 @@ _BUILDERS = {
     "criminalip": lambda config: (
         CriminalIPProvider(config.criminalip_api_key, config.cache_ttl_seconds)
         if config.criminalip_api_key
+        else None
+    ),
+    "censys": lambda config: (
+        CensysProvider(config.censys_api_key, config.cache_ttl_seconds)
+        if config.censys_api_key
         else None
     ),
     "internetdb": lambda config: InternetDBProvider(config.cache_ttl_seconds),

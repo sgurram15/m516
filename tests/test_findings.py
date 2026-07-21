@@ -6,8 +6,15 @@ from m516.models import Asset, DiscoveryResult, Service
 _CPE = "cpe:2.3:a:x:x:1.0:*:*:*:*:*:*:*"
 
 
-def _match(cvss, cve_id="CVE-X"):
-    return CVEMatch(id=cve_id, cvss_score=cvss, cvss_severity="HIGH", published=None, description=None)
+def _match(cvss, cve_id="CVE-X", match_confidence="broad"):
+    return CVEMatch(
+        id=cve_id,
+        cvss_score=cvss,
+        cvss_severity="HIGH",
+        published=None,
+        description=None,
+        match_confidence=match_confidence,
+    )
 
 
 def test_build_findings_skips_non_cve_eligible_services(monkeypatch):
@@ -34,7 +41,20 @@ def test_build_findings_creates_finding_for_eligible_service_with_matches(monkey
     assert len(findings) == 1
     assert findings[0].cve_ids == ["CVE-X"]
     assert findings[0].cvss == 9.0
+    assert findings[0].match_confidence == "broad"
     assert errors == []
+
+
+def test_build_findings_propagates_exact_match_confidence(monkeypatch):
+    monkeypatch.setattr(
+        findings_module, "lookup_cves", lambda service, api_key, ttl: [_match(9.0, match_confidence="exact")]
+    )
+    asset = Asset(ip="1.2.3.4", services=[Service(port=443, protocol="tcp", cpe=_CPE)])
+    result = DiscoveryResult(domain="example.com", assets=[asset])
+
+    findings, _ = build_findings(result)
+
+    assert findings[0].match_confidence == "exact"
 
 
 def test_build_findings_ranks_by_contextual_score_descending(monkeypatch):

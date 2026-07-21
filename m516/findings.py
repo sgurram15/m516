@@ -26,6 +26,7 @@ class Finding:
     contextual_score: float
     severity: str
     explanation: str
+    match_confidence: str
     compliance: list = field(default_factory=list)
     tenant_id: str | None = None
 
@@ -62,6 +63,7 @@ def build_findings(discovery_result: DiscoveryResult) -> tuple[list[Finding], li
                     contextual_score=contextual_score,
                     severity=severity,
                     explanation=explanation,
+                    match_confidence=matches[0].match_confidence,
                 )
             )
 

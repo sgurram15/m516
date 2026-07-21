@@ -3,7 +3,7 @@ from pathlib import Path
 
 from m516.config import Config
 from m516.models import Asset
-from m516.providers import criminalip, internetdb, netlas
+from m516.providers import censys, criminalip, internetdb, netlas
 from m516.providers.base import detect_waf
 from m516.providers.registry import get_enabled_providers
 
@@ -76,6 +76,40 @@ def test_internetdb_from_records_parses_ports_and_hostname():
     assert asset.sources == {"internetdb"}
 
 
+def test_censys_from_records_parses_services_and_certificate():
+    assets = censys.from_records(_load("censys_host.json"), domain="example-ng.gov.ng")
+
+    assert len(assets) == 1
+    asset = assets[0]
+    assert asset.ip == "154.113.7.30"
+    assert asset.country == "NG"
+    assert asset.as_name == "Main one Cable Company Nigeria Limited"
+    assert asset.cert_subject == "CN=charming-goldberg.154-113-7-30.plesk.page"
+    assert asset.cert_is_expired is False
+    assert asset.sources == {"censys"}
+
+    ftp = next(s for s in asset.services if s.port == 21)
+    assert ftp.product == "proftpd"
+    assert ftp.cpe == "cpe:2.3:a:proftpd_project:proftpd:*:*:*:*:*:*:*:*"
+    assert ftp.sources == {"censys"}
+
+    dns_service = next(s for s in asset.services if s.port == 53)
+    assert dns_service.product is None  # no software[] entry for this port
+
+
+def test_censys_from_records_skips_type_only_software_entries():
+    """Plesk's port has a {"type": ["WEB_UI"]} entry before the real vendor/product one — must not
+    be mistaken for a product name."""
+    assets = censys.from_records(_load("censys_host.json"), domain="example-ng.gov.ng")
+    plesk = next(s for s in assets[0].services if s.port == 8443)
+
+    assert plesk.product == "parallels_plesk_panel"
+
+
+def test_censys_from_records_handles_empty_response():
+    assert censys.from_records({}, domain="example.com") == []
+
+
 def test_detect_waf_matches_known_vendor_in_as_name():
     assert detect_waf(Asset(as_name="CLOUDFLARENET"))
     assert detect_waf(Asset(isp="Imperva Inc"))
@@ -88,6 +122,7 @@ def test_registry_enables_only_providers_with_keys_present():
         database_url=None,
         netlas_api_key="key",
         criminalip_api_key=None,
+        censys_api_key=None,
         nvd_api_key=None,
         cache_ttl_seconds=86400,
     )
@@ -97,4 +132,5 @@ def test_registry_enables_only_providers_with_keys_present():
 
     assert "netlas" in names
     assert "criminalip" not in names
+    assert "censys" not in names
     assert "internetdb" in names  # no key required (ADR-011)

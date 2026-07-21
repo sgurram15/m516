@@ -5,8 +5,15 @@ from m516.enrichment.scoring import score_finding
 from m516.models import Asset, Service
 
 
-def _match(cvss=5.0, severity="MEDIUM", published=None, cve_id="CVE-TEST-0001"):
-    return CVEMatch(id=cve_id, cvss_score=cvss, cvss_severity=severity, published=published, description=None)
+def _match(cvss=5.0, severity="MEDIUM", published=None, cve_id="CVE-TEST-0001", match_confidence="broad"):
+    return CVEMatch(
+        id=cve_id,
+        cvss_score=cvss,
+        cvss_severity=severity,
+        published=published,
+        description=None,
+        match_confidence=match_confidence,
+    )
 
 
 def test_sensitive_port_scores_higher_than_web_port():
@@ -85,3 +92,14 @@ def test_missing_cvss_score_treated_as_zero_but_still_explained():
     assert score == 0
     assert severity == "low"
     assert "no CVSS score available" in explanation
+
+
+def test_broad_match_confidence_adds_verification_caveat():
+    service = Service(port=443, protocol="tcp")
+    asset = Asset(is_behind_waf=False)
+
+    _, _, broad_explanation = score_finding(service, asset, [_match(match_confidence="broad")])
+    _, _, exact_explanation = score_finding(service, asset, [_match(match_confidence="exact")])
+
+    assert "not a version-confirmed vulnerability" in broad_explanation
+    assert "not a version-confirmed vulnerability" not in exact_explanation

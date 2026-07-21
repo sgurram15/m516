@@ -50,7 +50,7 @@ def from_records(data: dict, domain: str) -> list[Asset]:
         return []
 
     services = [
-        Service(port=port, protocol="tcp", cpe=_cpe_for_port(data, port))
+        Service(port=port, protocol="tcp", cpe=_cpe_for_port(data, port), sources={"internetdb"})
         for port in data.get("ports", []) or []
     ]
 

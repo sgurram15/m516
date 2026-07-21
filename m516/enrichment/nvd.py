@@ -40,10 +40,11 @@ class CVEMatch:
     cvss_severity: str | None
     published: datetime | None
     description: str | None
+    match_confidence: str = "broad"  # "exact" (version-confirmed cpeName) | "broad" (everything else)
 
 
 def lookup_cves(service: Service, api_key: str | None = None, cache_ttl_seconds: int = 86400) -> list[CVEMatch]:
-    params, cache_key = _build_query(service)
+    params, cache_key, confidence = _build_query(service)
     if params is None:
         return []
 
@@ -56,29 +57,39 @@ def lookup_cves(service: Service, api_key: str | None = None, cache_ttl_seconds:
         data = response.json()
         cache_set("nvd", cache_key, data)
 
-    return from_records(data)
+    return from_records(data, match_confidence=confidence)
 
 
-def _build_query(service: Service) -> tuple[dict | None, str | None]:
+def _build_query(service: Service) -> tuple[dict | None, str | None, str | None]:
     """CPE preferred (FR-2.1); versioned CPE -> exact match, wildcarded CPE -> broad match, no CPE but
-    a version string -> keyword search. No cpe/version_string -> nothing to query (BR-2)."""
+    a version string -> keyword search. No cpe/version_string -> nothing to query (BR-2).
+
+    The confidence label matters downstream (m516/enrichment/detection_level.py): a version-confirmed
+    `cpeName` hit is a real, applicable match; `virtualMatchString`/`keywordSearch` hits are a broader
+    product-family match that needs version confirmation before being treated as a live vulnerability."""
     if service.cpe:
         parts = service.cpe.split(":")
         version = parts[5] if len(parts) > 5 else "*"
         if version not in ("*", "-", ""):
-            return {"cpeName": service.cpe, "resultsPerPage": _RESULTS_PER_PAGE}, f"cpeName:{service.cpe}"
+            return (
+                {"cpeName": service.cpe, "resultsPerPage": _RESULTS_PER_PAGE},
+                f"cpeName:{service.cpe}",
+                "exact",
+            )
         return (
             {"virtualMatchString": service.cpe, "resultsPerPage": _RESULTS_PER_PAGE},
             f"virtualMatchString:{service.cpe}",
+            "broad",
         )
 
     if service.version_string:
         return (
             {"keywordSearch": service.version_string, "resultsPerPage": _RESULTS_PER_PAGE},
             f"keywordSearch:{service.version_string}",
+            "broad",
         )
 
-    return None, None
+    return None, None, None
 
 
 def _throttle(has_key: bool) -> None:
@@ -126,7 +137,7 @@ def _extract_description(cve: dict) -> str | None:
     return None
 
 
-def from_records(data: dict) -> list[CVEMatch]:
+def from_records(data: dict, match_confidence: str = "broad") -> list[CVEMatch]:
     """Offline parse path (docs/07_BACKEND_ARCHITECTURE.md §8)."""
     if not data:
         return []
@@ -146,6 +157,7 @@ def from_records(data: dict) -> list[CVEMatch]:
                 cvss_severity=cvss_severity,
                 published=_parse_datetime(cve.get("published")),
                 description=_extract_description(cve),
+                match_confidence=match_confidence,
             )
         )
 

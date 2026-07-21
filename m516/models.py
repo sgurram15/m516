@@ -15,6 +15,7 @@ class Service:
     version: str | None = None
     cpe: str | None = None
     banner: str | None = None
+    sources: set[str] = field(default_factory=set)
 
     @property
     def version_string(self) -> str | None:
@@ -85,11 +86,15 @@ class DiscoveryResult:
 def _merge_into(existing: Asset, incoming: Asset) -> None:
     existing.sources |= incoming.sources
 
-    existing_keys = {(s.port, s.protocol) for s in existing.services}
+    existing_by_key = {(s.port, s.protocol): s for s in existing.services}
     for service in incoming.services:
-        if (service.port, service.protocol) not in existing_keys:
+        key = (service.port, service.protocol)
+        current = existing_by_key.get(key)
+        if current is None:
             existing.services.append(service)
-            existing_keys.add((service.port, service.protocol))
+            existing_by_key[key] = service
+        else:
+            _merge_service_into(current, service)
 
     for attr in (
         "hostname",
@@ -111,3 +116,26 @@ def _merge_into(existing: Asset, incoming: Asset) -> None:
         existing.last_seen is None or incoming.last_seen > existing.last_seen
     ):
         existing.last_seen = incoming.last_seen
+
+
+def _merge_service_into(existing: Service, incoming: Service) -> None:
+    """BR-6, at service granularity: two providers reporting the same open port is provenance to
+    preserve (which API captured it), not a duplicate to discard.
+
+    BR-5 (no fabrication): if providers disagree on *what product* is running on this port (e.g. one
+    says "Caddy", another says "Fathom"), never graft one provider's version/cpe/banner onto another
+    provider's product label — that would misattribute one product's CVEs to a different, unrelated one.
+    Only combine fields when the providers agree on the product (or one side hasn't reported one)."""
+    existing.sources |= incoming.sources
+
+    products_conflict = (
+        existing.product is not None
+        and incoming.product is not None
+        and existing.product.lower() != incoming.product.lower()
+    )
+
+    for attr in ("name", "product", "version", "cpe", "banner"):
+        if products_conflict and attr in ("version", "cpe", "banner"):
+            continue
+        if getattr(existing, attr) is None and getattr(incoming, attr) is not None:
+            setattr(existing, attr, getattr(incoming, attr))

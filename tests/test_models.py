@@ -58,6 +58,65 @@ def test_merge_asset_does_not_duplicate_same_service():
     assert len(result.assets[0].services) == 1
 
 
+def test_merge_asset_unions_service_sources_on_same_port():
+    """Two providers reporting the same open port is provenance to keep (which API captured it),
+    not a duplicate to discard."""
+    result = DiscoveryResult(domain="example.com")
+    result.merge_asset(
+        Asset(ip="1.2.3.4", services=[Service(port=443, protocol="tcp", sources={"netlas"})])
+    )
+    result.merge_asset(
+        Asset(ip="1.2.3.4", services=[Service(port=443, protocol="tcp", sources={"censys"})])
+    )
+
+    assert len(result.assets[0].services) == 1
+    assert result.assets[0].services[0].sources == {"netlas", "censys"}
+
+
+def test_merge_asset_backfills_missing_service_fields_on_same_port():
+    result = DiscoveryResult(domain="example.com")
+    result.merge_asset(
+        Asset(ip="1.2.3.4", services=[Service(port=80, protocol="tcp", product="nginx")])
+    )
+    result.merge_asset(
+        Asset(
+            ip="1.2.3.4",
+            services=[Service(port=80, protocol="tcp", product="Nginx", cpe="cpe:2.3:a:f5:nginx:*")],
+        )
+    )
+
+    merged_service = result.assets[0].services[0]
+    assert merged_service.product == "nginx"  # existing value wins, never overwritten
+    assert merged_service.cpe == "cpe:2.3:a:f5:nginx:*"  # missing field backfilled
+
+
+def test_merge_asset_does_not_graft_cpe_from_a_disagreeing_product():
+    """BR-5: if two providers disagree on what product is running on a port, never combine one
+    provider's product label with another provider's cpe/version/banner — that would misattribute
+    one product's CVEs to a different, unrelated one."""
+    result = DiscoveryResult(domain="example.com")
+    result.merge_asset(
+        Asset(ip="1.2.3.4", services=[Service(port=80, protocol="tcp", product="Fathom")])
+    )
+    result.merge_asset(
+        Asset(
+            ip="1.2.3.4",
+            services=[
+                Service(
+                    port=80,
+                    protocol="tcp",
+                    product="Caddy",
+                    cpe="cpe:2.3:a:caddyserver:caddy:*:*:*:*:*:*:*:*",
+                )
+            ],
+        )
+    )
+
+    merged_service = result.assets[0].services[0]
+    assert merged_service.product == "Fathom"
+    assert merged_service.cpe is None  # not grafted from the disagreeing "Caddy" report
+
+
 def test_merge_asset_without_ip_is_appended_not_merged():
     result = DiscoveryResult(domain="example.com")
     result.merge_asset(Asset(ip=None))
