@@ -98,10 +98,11 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   were calling the API and not parsing them); new `m516/enrichment/port_risk.py` gives a deterministic,
   CVE-independent risk label per port type (SSH → "Weak Authentication", exposed DB ports → "Open
   Database", etc.) — usable even for the "not evaluated" services that have no CVE data at all, which is
-  exactly the gap it closes. Both wired into the Streamlit demo. `pytest` passes (64/64). **Two things
-  flagged, not acted on** (see Notes below): the mockups include a "Breach Monitor" and "Users & Roles"
-  sidebar item, both explicitly out of scope per `01_REQUIREMENTS.md`; and the "Port Scanner" name/"Scan
-  Date" label reads as active scanning when the engine is strictly passive (ADR-001).
+  exactly the gap it closes. Both wired into the Streamlit demo. `pytest` passes (64/64). **Two scope
+  conflicts flagged** (see Notes below): the mockups include a "Breach Monitor" and "Users & Roles"
+  sidebar item, both explicitly out of scope per `01_REQUIREMENTS.md` — **client confirmed 2026-07-21:
+  neither is being built for the POC**, resolving both. The "Port Scanner" name/"Scan Date" label reading
+  as active scanning (engine is strictly passive, ADR-001) is still open, not yet raised with the client.
 
 ## In progress
 
@@ -150,16 +151,17 @@ Legend: ✅ done · 🟡 in progress · ⬜ not started · 🔴 blocked
   and no pack is loaded until WP3. If the client has a specific scoring methodology in mind, revisit
   `m516/enrichment/scoring.py` — the formula is isolated in one pure function specifically so it's easy
   to swap without touching NVD lookup or orchestration code.
-- **UI mockups vs `01_REQUIREMENTS.md` — two unresolved conflicts, flagged not fixed.** The 3 mockups
-  in `ui screens/` (informing `06_FRONTEND_ARCHITECTURE.md`, not yet authored) include:
-  1. A **"Breach Monitor"** sidebar item — but "Breach / dark-web monitoring" is explicitly out of scope
-     for the POC (needs a separate data pipeline, raises PII concerns).
-  2. A **"Users & Roles"** sidebar item — but multi-tenancy/auth/roles is explicitly deferred ("weeks of
-     secure-auth work with zero demo value"), consistent with ADR-010 (tenant-aware model, no auth built).
-  3. The mockup screen is named **"Port Scanner"** with a "Scan Date" filter — reads as active scanning.
-     The engine is strictly passive (ADR-001) and has no scan/rescan feature at all; if this mockup
-     becomes the real WP5 frontend spec, the labeling should say "Port Findings" or similar, not
-     "Scanner", to avoid implying active probing to a client.
-  Resolve before WP5 frontend work formalizes around these mockups — either descope the two sidebar
-  items from the design, or consciously expand `01_REQUIREMENTS.md` to include them (bigger decision:
-  auth/roles was deferred specifically to avoid weeks of work with no POC value).
+- **UI mockups vs `01_REQUIREMENTS.md` — resolved 2026-07-21.** The 3 mockups in `ui screens/` (informing
+  `06_FRONTEND_ARCHITECTURE.md`, not yet authored) surfaced three conflicts with existing scope:
+  1. ✅ **Resolved — descoped.** A **"Breach Monitor"** sidebar item — client confirmed: **not building
+     Breach Monitor for the POC.** Matches `01_REQUIREMENTS.md`'s existing exclusion ("needs a separate
+     data pipeline; also raises PII concerns") — the mockup was wrong on this point, not the requirements
+     doc. When WP5 frontend work starts against these mockups, drop this sidebar item.
+  2. ✅ **Resolved — descoped.** A **"Users & Roles"** sidebar item — client confirmed: **not building
+     Users & Roles for the POC.** Matches `01_REQUIREMENTS.md`'s existing exclusion and ADR-010
+     (tenant-aware model, no auth built — "weeks of secure-auth work with zero demo value"). Drop this
+     sidebar item too when WP5 frontend work starts.
+  3. ⬜ **Still open.** The mockup screen is named **"Port Scanner"** with a "Scan Date" filter — reads
+     as active scanning. The engine is strictly passive (ADR-001) and has no scan/rescan feature at all;
+     if this mockup becomes the real WP5 frontend spec, the labeling should say "Port Findings" or
+     similar, not "Scanner", to avoid implying active probing to a client. Not yet raised with the client.

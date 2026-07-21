@@ -23,11 +23,11 @@
   sub-scores are display-only — `scoring.py`'s formula untouched. `findings.py` and the Streamlit script
   both locally recompute the primary (highest-CVSS) match to pull sub-scores, matching the existing
   `cvss=max(...)` duplication pattern rather than widening `score_finding()`'s return contract.
-- **New decisions:** None architectural (no new ADR). Two **flagged-not-acted-on** conflicts between the
-  UI mockups and `01_REQUIREMENTS.md`, recorded in `15_PROGRESS.md` Notes for the user to resolve before
-  WP5 frontend work formalizes around these mockups: "Breach Monitor" and "Users & Roles" sidebar items
-  are both explicitly out of POC scope; the "Port Scanner" name/"Scan Date" label reads as active
-  scanning when the engine is strictly passive (ADR-001).
+- **New decisions:** None architectural (no new ADR). Three conflicts between the UI mockups and
+  `01_REQUIREMENTS.md` were flagged; client resolved two same-session: **confirmed not building Breach
+  Monitor or Users & Roles for the POC** — both mockup sidebar items get dropped when WP5 frontend work
+  starts, and `01_REQUIREMENTS.md`'s existing exclusions stand as correct (the mockups were wrong, not
+  the requirements doc). The "Port Scanner" naming/passive-vs-active concern is still open.
 - **Pending work:** WP3 (compliance pack loader + mapping) still not started — this whole session was
   another detour, not a WP, same as Session 005. **Demo domain recommendation now exists**:
   `mutualtrustmfb.com` (richest real exposure found across 6 verified bank domains — 22 open ports,
@@ -43,9 +43,9 @@
   the WP5 React UI. `m516/enrichment/port_risk.py` gives CVE-independent risk signal for services with
   no version data. Golden rule and passive-only constraint unchanged throughout.
 - **Open questions:** NDPR/CBN source docs (still blocking real WP3 start)? Who validates mappings? IP
-  ownership? **New**: does the user want to formally confirm `mutualtrustmfb.com` as the demo domain, and
-  how should the Breach Monitor / Users & Roles / "Port Scanner" naming conflicts in the UI mockups be
-  resolved before they become the real WP5 frontend spec?
+  ownership? Does the user want to formally confirm `mutualtrustmfb.com` as the demo domain? How should
+  the "Port Scanner" naming (passive engine, active-sounding label) be resolved before WP5? (Breach
+  Monitor / Users & Roles — resolved same session, see New decisions above; no longer open.)
 
 ---
 
