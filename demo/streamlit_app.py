@@ -498,16 +498,26 @@ with st.sidebar:
         "External Attack Surface &amp; Compliance Management</div>",
         unsafe_allow_html=True,
     )
-    domains_input = st.text_area(
-        "Domains (one per line)",
-        value="\n".join(DEFAULT_DOMAINS),
-        height=140,
-    )
-    run = st.button("Run live scan", type="primary", use_container_width=True)
+    domain_choice = st.selectbox("Domain", DEFAULT_DOMAINS + ["Custom domain..."])
+    if domain_choice == "Custom domain...":
+        selected_domain = st.text_input("Enter a domain", placeholder="example.com").strip()
+    else:
+        selected_domain = domain_choice
+
+    run = st.button("Run live scan", type="primary", use_container_width=True, disabled=not selected_domain)
     st.caption(
-        "Strictly passive (ADR-001) — never touches a target directly. No live-scan/rescan feature "
-        "exists anywhere in this engine; every provider only queries third-party indexes."
+        "Scans only the selected domain — strictly passive (ADR-001), never touches a target directly. "
+        "No live-scan/rescan feature exists anywhere in this engine; every provider only queries "
+        "third-party indexes."
     )
+
+    scanned_domains = list(st.session_state.get("m516_scans", {}).keys())
+    if scanned_domains:
+        st.caption(f"Scanned so far: {', '.join(scanned_domains)}")
+        if st.button("Clear all results", use_container_width=True):
+            st.session_state.pop("m516_scans", None)
+            st.rerun()
+
     st.divider()
     view = st.radio("View", VIEWS, label_visibility="collapsed")
     with st.expander("Detection-level rule criteria"):
@@ -522,23 +532,23 @@ zero CVEs found.
             """
         )
 
-if run:
+if run and selected_domain:
     config = load_config()
     providers = get_enabled_providers(config)
     if not providers:
         st.error("No providers enabled — check NETLAS_API_KEY / CRIMINALIP_API_KEY / CENSYS_API_KEY in .env.")
         st.stop()
 
-    domains = [d.strip() for d in domains_input.splitlines() if d.strip()]
     overall_start = time.monotonic()
-    st.session_state["m516_scans"] = run_scan(domains, config, providers)
+    new_scan = run_scan([selected_domain], config, providers)
+    st.session_state.setdefault("m516_scans", {}).update(new_scan)
     st.session_state["m516_scan_seconds"] = time.monotonic() - overall_start
 
 scans: dict[str, DomainScan] | None = st.session_state.get("m516_scans")
 
-if scans is None:
+if not scans:
     st.title("M516 — Live Scan Demo")
-    st.info("Enter one or more domains in the sidebar and click **Run live scan** to begin.")
+    st.info("Pick a domain in the sidebar and click **Run live scan** to begin — only that domain is scanned.")
 else:
     if view == "Dashboard":
         render_dashboard(scans)
