@@ -4,7 +4,9 @@ that's still a separate, later deliverable. This exists only so the pipeline can
 end-to-end before WP5.
 
 Supports multiple domains at once (one per line) for triage/comparison across candidate targets —
-e.g. picking a demo domain by seeing which one actually shows real findings.
+e.g. picking a demo domain by seeing which one actually shows real findings. Findings/services are
+rendered plain-language-first (raw CVE IDs/CPE strings tucked into "Technical details" expanders) so a
+non-technical reader can follow along; nothing about the underlying data changes.
 
 Run from the project root: streamlit run demo/streamlit_app.py
 """
@@ -45,6 +47,54 @@ _LEVEL_STYLE = {
     "neutral": ("#e2e3e5", "#41464b"),
 }
 
+_LEVEL_META = {
+    "red": ("🟥", "Needs attention"),
+    "yellow": ("🟨", "Worth checking"),
+    "green": ("🟩", "Looks fine"),
+}
+
+# Plain-English names for the ports people actually run into. Purely a display label — never used
+# for scoring or CVE matching (that's still driven by product/CPE, see m516/enrichment/).
+_FRIENDLY_SERVICE_NAMES = {
+    21: "File Transfer (FTP)",
+    22: "Remote Admin Access (SSH)",
+    23: "Remote Admin Access (Telnet)",
+    25: "Email Sending (SMTP)",
+    53: "Domain Name System (DNS)",
+    80: "Website (HTTP)",
+    110: "Email Retrieval (POP3)",
+    143: "Email Retrieval (IMAP)",
+    443: "Website (HTTPS)",
+    445: "File Sharing (SMB)",
+    465: "Email Sending (SMTPS)",
+    587: "Email Sending (Submission)",
+    993: "Email Retrieval (IMAPS)",
+    995: "Email Retrieval (POP3S)",
+    1433: "Database (SQL Server)",
+    2077: "Hosting Control Panel (cPanel)",
+    2078: "Hosting Control Panel (cPanel, secure)",
+    2079: "Hosting Control Panel (cPanel)",
+    2080: "Hosting Control Panel (cPanel)",
+    2082: "Hosting Control Panel (cPanel)",
+    2083: "Hosting Control Panel (cPanel, secure)",
+    2086: "Hosting Control Panel (WHM)",
+    2087: "Hosting Control Panel (WHM, secure)",
+    2095: "Webmail",
+    2096: "Webmail (secure)",
+    3306: "Database (MySQL/MariaDB)",
+    3389: "Remote Desktop (RDP)",
+    5432: "Database (PostgreSQL)",
+    6379: "Database (Redis)",
+    8080: "Website (alternate port)",
+    8443: "Website (alternate port, secure)",
+    8880: "Website (alternate port)",
+    27017: "Database (MongoDB)",
+}
+
+
+def _friendly_service_name(port: int, protocol: str) -> str:
+    return _FRIENDLY_SERVICE_NAMES.get(port, f"Network service ({protocol.upper()} port {port})")
+
 
 def _level_css(level: str | None) -> str:
     bg, fg = _LEVEL_STYLE.get(level or "neutral", _LEVEL_STYLE["neutral"])
@@ -53,6 +103,38 @@ def _level_css(level: str | None) -> str:
 
 def _style_level_column(df: pd.DataFrame, column: str) -> "pd.io.formats.style.Styler":
     return df.style.map(_level_css, subset=[column])
+
+
+def _render_finding_card(f: Finding) -> None:
+    level = finding_detection_level(f)
+    icon, label = _LEVEL_META.get(level, ("⬜", "Not evaluated"))
+    service_name = _friendly_service_name(f.service.port, f.service.protocol)
+
+    with st.container(border=True):
+        st.markdown(f"##### {icon} {label} — {service_name} on `{f.asset.ip}`")
+
+        exposure = (
+            "protected by a detected firewall/CDN"
+            if f.asset.is_behind_waf
+            else "directly exposed to the internet, with no firewall/CDN detected"
+        )
+        confidence_note = (
+            "the exact software version couldn't be confirmed, so this is a signal to verify manually, "
+            "not a confirmed hole"
+            if f.match_confidence == "broad"
+            else "the software version was confirmed, so this is a real, actionable issue"
+        )
+        st.write(
+            f"This service ({f.service.product or 'unidentified software'}) is {exposure}. We found "
+            f"**{len(f.cve_ids)} known security issue(s)** associated with this software; the most "
+            f"serious would rate **{f.severity}** (CVSS {f.cvss}/10) — but {confidence_note}."
+        )
+
+        with st.expander("Technical details"):
+            st.write(f"**CPE:** `{f.service.cpe or '—'}`")
+            st.write(f"**CVE IDs:** {', '.join(f.cve_ids)}")
+            st.write(f"**Contextual score:** {f.contextual_score}/100 · **Confidence:** {f.match_confidence}")
+            st.write(f"**Full explanation:** {f.explanation}")
 
 
 st.set_page_config(page_title="M516 Live Scan Demo", layout="wide")
@@ -187,19 +269,35 @@ if run:
             for err in enrichment_errors:
                 st.warning(err)
 
-        # --- Per-domain detail ---
+        # --- Plain-language summary for this domain ---
         red = sum(1 for f in findings if finding_detection_level(f) == "red")
         yellow = sum(1 for f in findings if finding_detection_level(f) == "yellow")
         green_findings = sum(1 for f in findings if finding_detection_level(f) == "green")
         clean_services = len(eligible) - len(findings)  # checked, zero CVEs
-        not_evaluated = sum(len(a.services) for a in result.assets) - len(eligible)
+        total_ports = sum(len(a.services) for a in result.assets)
+        not_evaluated = total_ports - len(eligible)
+
+        if red:
+            st.error(f"**{red} finding(s) need attention** — version-confirmed, high-severity issues.")
+        elif yellow:
+            st.warning(
+                f"**{yellow} finding(s) worth checking** — real signals, but the exact software version "
+                "couldn't be confirmed, so verify before treating these as certain."
+            )
+        elif findings or clean_services:
+            st.success("Nothing concerning found — every service we could check came back clean.")
+        else:
+            st.info(
+                f"Not enough data was available to check for known issues — {total_ports} open port(s) "
+                "found, but none exposed a confirmable product/version."
+            )
 
         summary_rows.append(
             {
                 "Domain": domain,
                 "IP(s)": ", ".join(sorted({a.ip for a in result.assets if a.ip})) or "—",
                 "WAF/CDN": "Yes" if any(a.is_behind_waf for a in result.assets) else "No",
-                "Open ports": sum(len(a.services) for a in result.assets),
+                "Open ports": total_ports,
                 "Red": red,
                 "Yellow": yellow,
                 "Green (clean)": green_findings + clean_services,
@@ -207,61 +305,65 @@ if run:
             }
         )
 
+        # --- Discovered assets, plain-language first ---
         st.subheader(f"Discovered assets ({len(result.assets)})")
         if not result.assets:
             st.info("No assets discovered for this domain.")
         for asset in result.assets:
             cert_level = cert_detection_level(asset)
+            cert_icon, cert_label = _LEVEL_META.get(cert_level, ("⬜", "Not evaluated"))
             st.markdown(
                 f"**{asset.ip or '(no IP)'}**"
                 + (f" &middot; {asset.hostname}" if asset.hostname else "")
                 + f" &middot; country: {asset.country or 'unknown'}"
-                + f" &middot; WAF/CDN: {'yes' if asset.is_behind_waf else 'no'}"
-                + f" &middot; as: {asset.as_name or 'unknown'}",
+                + f" &middot; hosted by: {asset.as_name or 'unknown'}"
+                + f" &middot; firewall/CDN: {'yes' if asset.is_behind_waf else 'no'}"
+                + f" &middot; certificate: {cert_icon} {cert_label}",
                 unsafe_allow_html=True,
             )
-            st.caption(
-                f"Asset captured by: {', '.join(sorted(asset.sources)) or 'unknown'}"
-                + (f" · cert detection level: {cert_level}" if cert_level else " · cert: not evaluated")
+            st.caption(f"Captured by: {', '.join(sorted(asset.sources)) or 'unknown'}")
+
+            checked = sum(1 for s in asset.services if s.is_cve_eligible)
+            st.write(
+                f"{len(asset.services)} network door(s) found open on this server; {checked} had enough "
+                "detail to check for known issues (see findings below)."
             )
 
-            services_df = pd.DataFrame(
-                [
-                    {
-                        "Port": s.port,
-                        "Protocol": s.protocol,
-                        "Product": s.product or "—",
-                        "CPE": s.cpe or "—",
-                        "Captured by": ", ".join(sorted(s.sources)) or "unknown",
-                        "CVE-eligible": "Yes" if s.is_cve_eligible else "No",
-                    }
-                    for s in asset.services
-                ]
-            )
-            if not services_df.empty:
-                st.dataframe(services_df, use_container_width=True, hide_index=True)
+            simple_rows = [
+                {
+                    "Service": _friendly_service_name(s.port, s.protocol),
+                    "Software": s.product or "Unidentified",
+                    "Checked for issues?": "Yes — see findings below" if s.is_cve_eligible else "Not enough data",
+                    "Captured by": ", ".join(sorted(s.sources)) or "unknown",
+                }
+                for s in asset.services
+            ]
+            if simple_rows:
+                st.dataframe(pd.DataFrame(simple_rows), use_container_width=True, hide_index=True)
 
+                with st.expander("Technical detail (raw ports, protocols, CPE)"):
+                    st.dataframe(
+                        pd.DataFrame(
+                            [
+                                {
+                                    "Port": s.port,
+                                    "Protocol": s.protocol,
+                                    "Product": s.product or "—",
+                                    "CPE": s.cpe or "—",
+                                    "CVE-eligible": s.is_cve_eligible,
+                                }
+                                for s in asset.services
+                            ]
+                        ),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+        # --- Findings, plain-language cards ---
         st.subheader(f"Findings, ranked by risk ({len(findings)})")
         if findings:
-            findings_df = pd.DataFrame(
-                [
-                    {
-                        "Level": finding_detection_level(f),
-                        "Severity": f.severity.upper(),
-                        "Score": f.contextual_score,
-                        "Confidence": f.match_confidence,
-                        "Asset": f.asset.ip,
-                        "Port": f"{f.service.port}/{f.service.protocol}",
-                        "CVSS": f.cvss,
-                        "CVE IDs": ", ".join(f.cve_ids[:5]) + (" ..." if len(f.cve_ids) > 5 else ""),
-                        "Explanation": f.explanation,
-                    }
-                    for f in findings
-                ]
-            )
-            st.dataframe(
-                _style_level_column(findings_df, "Level"), use_container_width=True, hide_index=True
-            )
+            for f in findings:
+                _render_finding_card(f)
         else:
             st.info("No findings — no CVE-eligible services matched a known CVE.")
 
